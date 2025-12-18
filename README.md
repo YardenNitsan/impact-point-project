@@ -20,7 +20,7 @@ No private credentials are included in this repository.
 ## Setup
 
 ### 1. Clone the repository
-git clone https://github.com/USERNAME/impactpoint.git
+git clone https://github.com/YardenNitsan/impactpoint.git
 cd impactpoint
 
 ### 2. Install Dependecies for backend
