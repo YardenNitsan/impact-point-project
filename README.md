@@ -28,13 +28,13 @@ No private credentials are included in this repository.
 - npm install 
 - npm start
 
-###server will run on: http://localhost:3000
+server will run on: http://localhost:3000
 
 ### 3. Install dependencies for frontend
 - cd frontend
 - npm install
 - ng serve
 
-###frontend will run on: http://localhost:4200
+frontend will run on: http://localhost:4200
 
 
