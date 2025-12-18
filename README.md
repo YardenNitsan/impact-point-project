@@ -3,14 +3,10 @@
 ImpactPoint is a web-based visualization project built with Angular and Cesium,
 featuring a Node.js backend for data processing and APIs.
 
----
-
 ## Requirements
 - Node.js >= 18
 - Angular CLI (v19)
 - npm
-
----
 
 ## Cesium
 This project uses a **public, domain-restricted Cesium Ion access token**
