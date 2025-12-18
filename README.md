@@ -20,21 +20,21 @@ No private credentials are included in this repository.
 ## Setup
 
 ### 1. Clone the repository
-git clone https://github.com/YardenNitsan/impactpoint.git
-cd impactpoint
+- git clone https://github.com/YardenNitsan/impactpoint.git
+- cd impactpoint
 
 ### 2. Install Dependecies for backend
-cd services/main-service
-npm install 
-npm start
+- cd services/main-service
+- npm install 
+- npm start
 
-server will run on: http://localhost:3000
+###server will run on: http://localhost:3000
 
 ### 3. Install dependencies for frontend
-cd frontend
-npm install
-ng serve
+- cd frontend
+- npm install
+- ng serve
 
-frontend will run on: http://localhost:4200
+###frontend will run on: http://localhost:4200
 
 
