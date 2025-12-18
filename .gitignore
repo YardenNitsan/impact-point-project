@@ -1,0 +1,23 @@
+# Node 
+node_modules/
+
+# Build 
+dist/
+build/
+.angular/
+
+# Cesium huge files
+frontend/src/assets/cesium/
+frontend/public/cesium/
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

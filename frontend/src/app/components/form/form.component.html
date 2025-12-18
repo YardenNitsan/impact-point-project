@@ -1,0 +1,45 @@
+<button class="tool-btn" (click)="toggle()" >
+  enter parameters
+</button>
+
+<div class="tool-panel" *ngIf="isOpen">
+  <form [formGroup]="trajectoryForm" (ngSubmit)="submit()">
+
+    <div class="row">
+      <label>Mass (kg)</label>
+      <input type="number" formControlName="mass">
+    </div>
+
+    <div class="row">
+      <label>Speed (m/s)</label>
+      <input type="number" formControlName="speed">
+    </div>
+
+    <div class="row">
+      <label>Elevation (°)</label>
+      <input type="number" formControlName="elevation">
+    </div>
+
+    <div class="row">
+      <label>Azimuth (°)</label>
+      <input type="number" formControlName="azimuth">
+    </div>
+
+    <div class="row">
+      <label>Lat</label>
+      <input type="number" formControlName="lat">
+    </div>
+
+    <div class="row">
+      <label>Lon</label>
+      <input type="number" formControlName="lon">
+    </div>
+
+    <div class="row">
+      <label>Alt</label>
+      <input type="number" formControlName="alt">
+    </div>
+
+    <button type="submit" class="send-btn">Send</button>
+  </form>
+</div>

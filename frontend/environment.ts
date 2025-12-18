@@ -1,0 +1,4 @@
+export const environment = {
+    cesium_public_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyMDljMWZkMy0zMjQ0LTQ0ZjctYTRkMS00MGFlM2JkYmMzZTkiLCJpZCI6MzYyMTYwLCJpYXQiOjE3NjYwNTQ1NDB9.t4wBm4CCsyEm9qpggz9tbMnI1emgkKA9y5_ddQngLXs'
+
+}
