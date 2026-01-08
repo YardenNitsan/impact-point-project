@@ -3,16 +3,14 @@ img{
 }
 
 /* Tool Button*/
-
 .tool-btn {
   position: absolute;
   top: 1%;
   left: 0.8%;
   z-index: 3000;
-  margin-top: 0;
   padding: 0;
 
-  width: 2.3%;
+  width: 1.8%;
   height: 3.5%;
   
   box-sizing: border-box;
@@ -26,11 +24,12 @@ img{
 }
 
 .tool-btn:hover {
-  background: rgba(55, 55, 55, 1);
+  background: rgb(137, 208, 255);
   box-shadow: 0 0 8px #fff;
   cursor: pointer;
   border-color: #aef;
 }
+
 
 /* Dropdown Panel */
 .tool-panel {

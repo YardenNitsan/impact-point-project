@@ -1,16 +1,10 @@
 import { Component } from '@angular/core';
-import { CesiumDirective } from './cesium.directive';
-import { FormComponent } from './components/form/form.component';
-import { PageNotFoundComponent } from './components/page-not-found/page-not-found.component';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CesiumDirective,
-    FormComponent,
-    PageNotFoundComponent
-  ],
+  imports: [RouterOutlet],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
