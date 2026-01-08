@@ -21,7 +21,8 @@ No private credentials are included in this repository.
 
 ### 2. Install Dependecies for backend
 - cd services/main-service
-- npm install 
+- npm install
+- npm build
 - npm start
 
 server will run on: http://localhost:3000
