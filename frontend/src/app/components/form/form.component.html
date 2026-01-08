@@ -1,45 +1,49 @@
+
 <button class="tool-btn" (click)="toggle()" >
-  enter parameters
+  <img src="../../../assets/input-parameters-simulation.png" alt="enter parameters">
 </button>
 
 <div class="tool-panel" *ngIf="isOpen">
   <form [formGroup]="trajectoryForm" (ngSubmit)="submit()">
 
     <div class="row">
-      <label>Mass (kg)</label>
-      <input type="number" formControlName="mass">
+      <label>Alt</label>
+      <input type="number" formControlName="alt" placeholder="Enter altitude">
     </div>
 
-    <div class="row">
-      <label>Speed (m/s)</label>
-      <input type="number" formControlName="speed">
-    </div>
-
-    <div class="row">
-      <label>Elevation (°)</label>
-      <input type="number" formControlName="elevation">
-    </div>
-
+    <!-- angle of throw relatively to sky directions: north, south, west, east -->
     <div class="row">
       <label>Azimuth (°)</label>
-      <input type="number" formControlName="azimuth">
+      <input type="number" formControlName="azimuth" placeholder="Enter azimuth">
+    </div>
+
+    <!-- angle of throw relatively to the horizon -->
+    <div class="row">
+      <label>Elevation (°)</label>
+      <input type="number" formControlName="elevation" placeholder="Enter elevation">
     </div>
 
     <div class="row">
       <label>Lat</label>
-      <input type="number" formControlName="lat">
+      <input type="number" formControlName="lat" placeholder="Enter latitude">
     </div>
 
     <div class="row">
       <label>Lon</label>
-      <input type="number" formControlName="lon">
+      <input type="number" formControlName="lon" placeholder="Enter longtitude">
     </div>
 
     <div class="row">
-      <label>Alt</label>
-      <input type="number" formControlName="alt">
+      <label>Mass (kg)</label>
+      <input type="number" formControlName="mass" placeholder="Enter mass">
+    </div>
+
+    <div class="row">
+      <label>Initial Speed (m/s)</label>
+      <input type="number" formControlName="speed" placeholder="Enter initial speed">
     </div>
 
     <button type="submit" class="send-btn">Send</button>
   </form>
 </div>
+

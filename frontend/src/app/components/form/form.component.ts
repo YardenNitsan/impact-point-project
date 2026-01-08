@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
 
@@ -14,24 +15,39 @@ import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
 })
 export class FormComponent {
 
+  constructor(private http: HttpClient){
+
+  }
   trajectoryForm = new FormGroup({
-    mass: new FormControl(1),               // kg
-    speed: new FormControl(100),            // m/s
-    elevation: new FormControl(45),         // degrees
-    azimuth: new FormControl(0),            // degrees
-    lat: new FormControl(32.0853),
-    lon: new FormControl(34.7818),
-    alt: new FormControl(0)
+    mass: new FormControl(''),               // kg
+    speed: new FormControl(''),            // m/s
+    elevation: new FormControl(''),         // degrees
+    azimuth: new FormControl(''),            // degrees
+    lat: new FormControl(''),
+    lon: new FormControl(''),
+    alt: new FormControl('')
   });
 
   isOpen:boolean = false;
   toggle(){
     this.isOpen = !this.isOpen;
   }
-  close(){
-    this.isOpen = false;
-  }
+
   submit() {
-    console.log('Form data:', this.trajectoryForm.value);
+    if(this.trajectoryForm.invalid){
+      return;
+    }
+    const payload = this.trajectoryForm.value;
+    console.log('Payload: ', payload);
+    this.http.post('http://localhost:3000/api/trajectory',
+      payload
+    ).subscribe({
+      next: (response) => {
+        console.log('Server Resonse', response);
+      },
+      error: (err) => {
+        console.log('Error: ', err);
+      }
+    })
   }
 }

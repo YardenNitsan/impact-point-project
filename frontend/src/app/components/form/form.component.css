@@ -1,53 +1,60 @@
+img{
+  height: 100%;
+}
+
 /* Tool Button*/
-   
+
 .tool-btn {
-  position: fixed;
-  top: 5px;
-  left: 8px;
+  position: absolute;
+  top: 1%;
+  left: 0.8%;
   z-index: 3000;
+  margin-top: 0;
+  padding: 0;
 
-  width: 10%;
-  height: 4%;
-
-  background: rgba(40, 40, 40, 0.9);
+  width: 2.3%;
+  height: 3.5%;
+  
+  box-sizing: border-box;
+  background: #303336;
   border: 1px solid #444;
-  border-radius: 6px;
+  border-radius: 14%;
 
   color: white;
-  font-size: 16px;
 
   cursor: pointer;
 }
 
-
 .tool-btn:hover {
   background: rgba(55, 55, 55, 1);
+  box-shadow: 0 0 8px #fff;
+  cursor: pointer;
+  border-color: #aef;
 }
 
 /* Dropdown Panel */
 .tool-panel {
   position: fixed;  
-  top: 56px;
-  left: 12px;
+  top: 6%;
+  left: 0.8%;
   z-index: 3000;
 
-  width: 280px;
-  max-height: calc(100vh - 80px);
-  overflow-y: auto;
+  height: auto;
+  width: 15%;
 
-  background: rgba(30, 30, 30, 0.96);
+  background: rgba(30, 30, 30, 0.9);
   border: 1px solid #444;
-  border-radius: 4px;
+  border-radius: 2%;
 
-  padding: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+  padding: 1%;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.7);
 }
 
 /* FORM */
 form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 15px;
 }
 
 .row {
@@ -56,14 +63,14 @@ form {
 }
 
 label {
-  font-size: 11px;
+  font-size: 15px;
   color: #bbb;
-  margin-bottom: 2px;
+  margin-bottom: 3%;
 }
 
 input {
   height: 26px;
-  padding: 4px 6px;
+  padding: 1px 5px ;
 
   background: #3a3a3a;
   border: 1px solid #555;
@@ -78,14 +85,21 @@ input:focus {
   border-color: #6ea8ff;
 }
 
+input:hover{
+  background: rgba(55, 55, 55, 1);
+  box-shadow: 0 0 8px #fff;
+  cursor:text;
+  border-color: #aef;
+}
+
 /* Send Button */
 .send-btn {
-  margin-top: 6px;
+  margin-top: 3%;
   height: 30px;
 
   background: #4a90e2;
   border: none;
-  border-radius: 3px;
+  border-radius: 10px;
 
   color: white;
   font-size: 12px;
@@ -95,16 +109,12 @@ input:focus {
 }
 
 .send-btn:hover {
-  background: #357abd;
+  background: rgba(55, 55, 55, 1);
+  box-shadow: 0 0 8px #fff;
+  cursor: pointer;
+  border-color: #aef;
+  background: #4a90e2;
+  font-weight: 600;
+  border: 1px solid #6ea8ff;
 }
-.icon {
-  width: 18px;
-  height: 18px;
 
-  filter:
-    invert(1)
-    grayscale(1)
-    brightness(2);
-
-  background: transparent;
-}

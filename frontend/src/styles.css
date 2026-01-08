@@ -5,4 +5,5 @@ html, body, #cesiumContainer {
   padding: 0;
   overflow: hidden;
   display: block;
+  font-family: 'Arial';
 }

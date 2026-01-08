@@ -1,8 +1,3 @@
-import { Router, Request, Response } from "express";
-
-const router = Router();
-
-
 const coords = [
   { lon: 34.789700, lat: 32.075500, alt: 150 },
   { lon: 34.789578, lat: 32.074047, alt: 120 },
@@ -11,9 +6,4 @@ const coords = [
   { lon: 34.788500, lat: 32.073800, alt: 150 }
 ];
 
-
-router.get("/", (req: Request, res: Response) => {
-  res.json(coords);
-});
-
-export default router;
+export default coords;
