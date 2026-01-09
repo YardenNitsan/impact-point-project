@@ -26,7 +26,6 @@
   height: 28px;
 }
 
-/* ← זה הקסם */
 .home-btn.active {
   background: rgba(63, 240, 255, 0.1);
   box-shadow:

@@ -1,7 +1,7 @@
 .home-layout {
-  position: fixed;
-  height: 100%;
-  width: 100%;
+  position: relative;
+  height: 100vh;
+  width: 100vw;
   overflow: hidden;
 }
 
@@ -20,13 +20,13 @@
 
 .sidebar-wrapper {
   position: absolute;
-  top: 50%;
+  top: 42%;
   left: 0;
+  transform: translateY(-50%);
 
-  transform: translateY(-60%);
-
-  width: 5%;
-  height: auto;
+  width: 5vw;
+  
+  height: 50vh;
 
   z-index: 3000;
 }

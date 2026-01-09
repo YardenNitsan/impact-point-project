@@ -36,5 +36,10 @@ export class CesiumDirective implements AfterViewInit {
     viewer.scene.globe.depthTestAgainstTerrain = true;
 
     this.cesiumManager.setViewer(viewer);
+    
+    setTimeout(() => {
+      viewer.resize();
+      viewer.scene.requestRender();
+    }, 0);
   }
 }
