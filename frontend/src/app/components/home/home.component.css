@@ -1,24 +1,16 @@
 .home-layout {
-  position: relative;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-}
-
-/* main-area תופס הכל */
-.main-area {
-  position: absolute;
-  inset: 0;
-}
-
-/* Cesium */
-.cesium-wrapper,
-.cesium-container {
   width: 100%;
   height: 100%;
 }
 
-.sidebar-wrapper {
+.cesium-container {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* נמוך */
+}
+
+
+/* .sidebar-wrapper {
   position: absolute;
   top: 42%;
   left: 0;
@@ -29,4 +21,4 @@
   height: 50vh;
 
   z-index: 3000;
-}
+} */

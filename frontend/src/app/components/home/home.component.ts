@@ -9,7 +9,7 @@ import { SideBarComponent } from "../side-bar/side-bar.component";
   imports: [
     FormComponent,
     CesiumDirective,
-    SideBarComponent
+    // SideBarComponent
 ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'

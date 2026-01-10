@@ -1,17 +1,19 @@
 .header {
-
-  width: 100%;
+  width: 4vw;
   height: 60vh;
 
-  background-color: rgb(48, 49, 52, 0.7);
-  /* background-color: blue; */
+  position: relative; /* לא absolute */
+  z-index: 10000;     /* מעל Cesium */
 
+  background-color: rgba(48, 49, 52, 0.7);
   border-radius: 0 2rem 2rem 0;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-evenly;
 }
+
 
 .home-btn {
   background: transparent;

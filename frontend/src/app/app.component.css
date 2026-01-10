@@ -1,0 +1,17 @@
+.app-shell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+app-side-bar {
+  position: fixed;
+  top: 20%;
+  left: 0;
+  z-index: 9999; /* מעל Cesium */
+}
+
+.page-content {
+  width: 100%;
+  height: 100%;
+}
