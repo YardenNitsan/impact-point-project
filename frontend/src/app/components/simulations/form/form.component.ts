@@ -1,20 +1,16 @@
-import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-form',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
-    CommonModule
   ],
   templateUrl: './form.component.html',
   styleUrl: './form.component.css'
 })
 export class FormComponent {
-
   constructor(private http: HttpClient){
 
   }

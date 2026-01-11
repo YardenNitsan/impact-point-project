@@ -1,0 +1,53 @@
+.history-wrapper {
+  width: 100%;
+  padding: 0.8em 1.5em;
+
+  background-color: #c1c9cf;
+  border: 1px solid #c1c9ca;
+  border-radius: 2em;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  
+  gap: 2em;
+
+  box-sizing: border-box;
+  font-size: 1em;
+}
+.history-item {
+  white-space: nowrap;
+  font-size: 1em;
+}
+
+button {
+  width: 10%;
+  height: 2rem;
+  border-radius: 0.5em;
+  border: 1px solid white;
+  
+  color: white;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.watch-btn{
+  background-color: rgb(108, 221, 132);
+}
+.watch-btn:hover {
+  background-color: rgb(112, 230, 137);
+}
+
+.delete-btn{
+  background-color: rgb(235, 100, 80);
+}
+.delete-btn:hover {
+    background-color: rgb(245, 110, 90);
+}
+
+.details-btn{
+  background-color: #609cfd;
+}
+.details-btn:hover {
+    background-color: #74a8fd;
+}
