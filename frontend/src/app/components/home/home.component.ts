@@ -10,10 +10,11 @@ import { CesiumDirective } from '../../cesium.directive';
   styleUrl: './home.component.css'
 })
 export class HomeComponent {
+  waitForWindow: number = 300;
   ngAfterViewInit() {
     setTimeout(() => {
       window.dispatchEvent(new Event('resize'));
-    }, 300);
+    }, this.waitForWindow);
   }
 
 }

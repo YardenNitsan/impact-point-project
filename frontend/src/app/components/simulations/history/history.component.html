@@ -1,7 +1,16 @@
-<div class="history-wrapper">
-  <div class="history-item">Date: {{date}}</div>
-  <div class="history-item">Amount of time: {{amount_of_time}}</div>
-  <button class="details-btn">Details</button>
-  <button class="delete-btn">Delete</button>
-  <button class="watch-btn">Watch</button>
+<div class="history-container">
+  <div class="history-card" *ngFor="let sim of simulations">
+
+    <div class="info">
+      <div>Date: {{ sim.createdAt | date:'yyyy-MM-dd' }}</div>
+      <div>Amount of time: {{ sim.durationMinutes }} minutes</div>
+    </div>
+
+    <div class="actions">
+      <button class="details-btn">Details</button>
+      <button class="delete-btn">Delete</button>
+      <button class="watch-btn">Watch</button>
+    </div>
+
+  </div>
 </div>

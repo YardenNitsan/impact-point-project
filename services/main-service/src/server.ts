@@ -1,14 +1,16 @@
 import 'dotenv/config'
 import express from "express";
 import cors from "cors";
-import routerCoords from "./coords/coords.route";
-import routerTrajectory from './trajectory/trajectory.route';
+import routerMongo from './routes/mongo.route';
 import { errorHandler } from './middlewares/error-handler';
 
 
+const ALLOWED_ORIGIN="http://localhost:4200";
+const PORT=3000;
+
 const app = express();
 app.use(cors({
-  origin: "http://localhost:4200",
+  origin: ALLOWED_ORIGIN,
   methods:["GET", "POST"],
 
   //to allow json only
@@ -16,12 +18,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.use("/api/coords", routerCoords);
-
-app.use("/api/trajectory", routerTrajectory);
+app.use("/api/simulation", routerMongo);
 
 app.use(errorHandler);
 
-app.listen(3000, () => {
+app.listen(PORT, () => {
   console.log("SERVER IS RUNNING");
 });
+
+

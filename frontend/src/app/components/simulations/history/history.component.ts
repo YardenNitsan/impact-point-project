@@ -1,13 +1,28 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { SimulationHistoryService, SimulationHistoryItem } from './services/simulation-history.service';
 
 @Component({
   selector: 'app-history',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule],
   templateUrl: './history.component.html',
   styleUrl: './history.component.css'
 })
-export class HistoryComponent {
-  id = 1;
-  date = '2024-06-10';
-  amount_of_time = 0;
+export class HistoryComponent implements OnInit {
+
+  simulations: SimulationHistoryItem[] = [];
+
+  constructor(private historyService: SimulationHistoryService) {}
+
+  ngOnInit(): void {
+    this.historyService.getSimulations().subscribe({
+      next: (data) => {
+        this.simulations = data;
+      },
+      error: (err) => {
+        console.error('Failed to load simulations', err);
+      }
+    });
+  }
 }

@@ -1,53 +1,71 @@
-.history-wrapper {
+.history-container {
   width: 100%;
-  padding: 0.8em 1.5em;
+  max-height: 60%; 
+  overflow-y: auto; 
+  padding: 1em;
 
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+
+  box-sizing: border-box;
+}
+
+.history-card {
   background-color: #c1c9cf;
   border: 1px solid #c1c9ca;
   border-radius: 2em;
 
+  padding: 1em 1.5em;
+
   display: flex;
   align-items: center;
-  justify-content: space-evenly;
-  
-  gap: 2em;
+  justify-content: space-between;
 
   box-sizing: border-box;
-  font-size: 1em;
 }
-.history-item {
-  white-space: nowrap;
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
   font-size: 1em;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6em;
 }
 
 button {
-  width: 10%;
-  height: 2rem;
-  border-radius: 0.5em;
-  border: 1px solid white;
-  
+  min-width: 5.5rem;
+  height: 2.2rem;
+  border-radius: 0.6em;
+  border: none;
+
   color: white;
-  font-size: 1em;
+  font-size: 0.95em;
   cursor: pointer;
 }
 
-.watch-btn{
+.watch-btn {
   background-color: rgb(108, 221, 132);
 }
 .watch-btn:hover {
   background-color: rgb(112, 230, 137);
 }
 
-.delete-btn{
+.delete-btn {
   background-color: rgb(235, 100, 80);
 }
 .delete-btn:hover {
-    background-color: rgb(245, 110, 90);
+  background-color: rgb(245, 110, 90);
 }
 
-.details-btn{
+.details-btn {
   background-color: #609cfd;
 }
 .details-btn:hover {
-    background-color: #74a8fd;
+  background-color: #74a8fd;
 }

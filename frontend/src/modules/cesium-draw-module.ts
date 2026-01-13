@@ -9,6 +9,10 @@ import {
 } from "cesium";
 
 export function drawTrajectory(viewer: any, points: any[]) {
+  const viewerWidthValue:number = 5;
+  const interpolationDegreeValue:number = 2; 
+  var totalTime:number = 0;
+  const entityPixelSize: number = 14;
 
   const pathPositions = points.map(p =>
     Cartesian3.fromDegrees(p.lon, p.lat, p.alt)
@@ -17,7 +21,7 @@ export function drawTrajectory(viewer: any, points: any[]) {
   viewer.entities.add({
     polyline: {
       positions: pathPositions,
-      width: 5,
+      viewerWidth: viewerWidthValue,
       material: Color.CYAN
     }
   });
@@ -27,10 +31,8 @@ export function drawTrajectory(viewer: any, points: any[]) {
 
   property.setInterpolationOptions({
     interpolationAlgorithm: HermitePolynomialApproximation,
-    interpolationDegree: 2
+    interpolationDegree: interpolationDegreeValue
   });
-
-  let totalTime = 0;
 
   for (let i = 0; i < pathPositions.length - 1; i++) {
     const start = pathPositions[i];
@@ -55,7 +57,7 @@ export function drawTrajectory(viewer: any, points: any[]) {
   const entity = viewer.entities.add({
     position: property,
     point: { 
-      pixelSize: 14, 
+      pixelSize: entityPixelSize, 
       color: Color.RED
     },
     orientation: new VelocityOrientationProperty(property)

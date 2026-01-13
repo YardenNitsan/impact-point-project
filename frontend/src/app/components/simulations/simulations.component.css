@@ -30,8 +30,8 @@
 
 
 .toggle-button:hover{
-    cursor: pointer;
-    background-color: #60A5FA;
+  cursor: pointer;
+  background-color: #60A5FA;
 }
 
 app-form, app-history {

@@ -30,16 +30,21 @@ export class FormComponent {
   }
 
   submit() {
-    if(this.trajectoryForm.invalid){
+    if(this.trajectoryForm.invalid)
       return;
-    }
+
     const payload = this.trajectoryForm.value;
     console.log('Payload: ', payload);
-    this.http.post('http://localhost:3000/api/trajectory',
-      payload
+
+    this.http.post('http://localhost:3000/api/simulation',
+      payload,
+      {observe: 'response'}
     ).subscribe({
       next: (response) => {
-        console.log('Server Resonse', response);
+        if (response.status === 201){
+          console.log('Server Resonse', response);
+        }
+        
       },
       error: (err) => {
         console.log('Error: ', err);
