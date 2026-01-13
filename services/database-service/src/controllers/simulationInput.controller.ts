@@ -25,15 +25,3 @@ export const createSimulation = async (
     res.status(400).json({ error: "Failed to save simulation" });
   }
 };
-
-export const getSimulations = async (
-  _req: Request,
-  res: Response
-) => {
-  try {
-    const simulations = await SimulationInput.find().sort({ createdAt: -1 });
-    res.json(simulations);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch simulations" });
-  }
-};

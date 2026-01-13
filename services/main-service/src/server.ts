@@ -4,14 +4,13 @@ import cors from "cors";
 import routerMongo from './routes/mongo.route';
 import { errorHandler } from './middlewares/error-handler';
 
-
 const ALLOWED_ORIGIN="http://localhost:4200";
 const PORT=3000;
 
 const app = express();
 app.use(cors({
   origin: ALLOWED_ORIGIN,
-  methods:["GET", "POST"],
+  methods:["GET", "POST", "DELETE"],
 
   //to allow json only
   allowHeaders: ["Content-Type"]
@@ -25,5 +24,3 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log("SERVER IS RUNNING");
 });
-
-

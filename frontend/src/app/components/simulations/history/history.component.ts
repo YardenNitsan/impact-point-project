@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SimulationHistoryService, SimulationHistoryItem } from './services/simulation-history.service';
+import { SimulationHistoryService, SimulationHistoryItem } from './services/simulationHistory.service';
 
 @Component({
   selector: 'app-history',
@@ -12,16 +12,40 @@ import { SimulationHistoryService, SimulationHistoryItem } from './services/simu
 export class HistoryComponent implements OnInit {
 
   simulations: SimulationHistoryItem[] = [];
+  @Output() countSim = new EventEmitter<number>();
 
-  constructor(private historyService: SimulationHistoryService) {}
+  cardsToNotScroll = 5;
+  count = 0;
+  shouldScroll = false;
+
+  constructor(
+    private simulationService: SimulationHistoryService
+  ) {}
 
   ngOnInit(): void {
-    this.historyService.getSimulations().subscribe({
+    this.simulationService.getSimulations().subscribe({
       next: (data) => {
         this.simulations = data;
+        this.countSim.emit(data.length);
+        this.shouldScroll = data.length > this.cardsToNotScroll;
       },
       error: (err) => {
         console.error('Failed to load simulations', err);
+      }
+    });
+  }
+
+  deleteSim(id: string) {
+    this.simulationService.deleteSimulation(id).subscribe({
+      next: () => {
+
+        this.simulations = this.simulations.filter(sim => sim._id !== id);
+
+        this.countSim.emit(this.simulations.length);
+      },
+      error: (err) => {
+        console.error('Failed to delete simulation', err);
+        alert('Delete failed');
       }
     });
   }

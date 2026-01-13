@@ -1,8 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
-import simulationResultRoute from "./routes/simulationResult.route";
-
-import simulationRoute from "./routes/simulationInput.route";
+import router from "./routes/simulation.routes";
 
 const app = express();
 const PORT = 4000;
@@ -20,10 +18,7 @@ mongoose
   });
 
 // Routes
-app.use("/api/simulation-input", simulationRoute);
-app.use("/api/simulation-result", simulationResultRoute);
-
-
+app.use("/api/simulation", router);
 
 app.listen(PORT, () => {
   console.log(`Mongo service running on port ${PORT}`);

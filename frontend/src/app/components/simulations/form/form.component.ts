@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
 
 @Component({
@@ -11,9 +11,11 @@ import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
   styleUrl: './form.component.css'
 })
 export class FormComponent {
-  constructor(private http: HttpClient){
 
-  }
+  
+
+  constructor(private http: HttpClient){}
+
   trajectoryForm = new FormGroup({
     mass: new FormControl(''),               // kg
     speed: new FormControl(''),            // m/s
@@ -29,6 +31,8 @@ export class FormComponent {
     this.isOpen = !this.isOpen;
   }
 
+  @Output() isSubmitted = new EventEmitter<boolean>();
+
   submit() {
     if(this.trajectoryForm.invalid)
       return;
@@ -42,6 +46,7 @@ export class FormComponent {
     ).subscribe({
       next: (response) => {
         if (response.status === 201){
+          this.isSubmitted.emit(true);
           console.log('Server Resonse', response);
         }
         

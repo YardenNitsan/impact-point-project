@@ -9,8 +9,15 @@ import { FormComponent } from './form/form.component';
   styleUrl: './simulations.component.css'
 })
 export class SimulationsComponent {
+
   formHistoryClicked: boolean = false;
-  
+  total = 0;
+
+  onCountChanged(value: number) {
+    console.log('COUNT RECEIVED:', value);
+    this.total = value;
+  }
+
   handleClick(){
     this.formHistoryClicked = !this.formHistoryClicked;
   }
