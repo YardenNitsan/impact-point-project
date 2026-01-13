@@ -17,4 +17,7 @@ export class SimulationHistoryService {
   getSimulations(): Observable<SimulationHistoryItem[]> {
     return this.http.get<SimulationHistoryItem[]>(this.API_URL);
   }
+  deleteSimulation(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/${id}`);
+  }
 }

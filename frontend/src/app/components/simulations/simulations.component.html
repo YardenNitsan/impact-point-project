@@ -6,7 +6,11 @@
         <app-form></app-form>           
     }
     @else {
-        <app-history></app-history>
+        <div style="color: white;">
+            Total of simulations is: {{ total }}
+        </div>
+
+        <app-history (countSim)="onCountChanged($event)"></app-history>
     }
     
 </div>
