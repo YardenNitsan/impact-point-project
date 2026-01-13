@@ -31,6 +31,7 @@ server will run on: http://localhost:3000
 - cd frontend
 - npm install
 - ng serve
+frontend will run on: http://localhost:4200
 
 ## Database (MongoDB)
 
@@ -63,6 +64,6 @@ docker run -d \
 mongo will run on port 27017. 
 make sure this port is not used
 
-frontend will run on: http://localhost:4200
+
 
 
