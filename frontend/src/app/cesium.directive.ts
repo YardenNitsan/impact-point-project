@@ -29,10 +29,9 @@ export class CesiumDirective implements AfterViewInit, OnDestroy {
 
     this.cesiumManager.setViewer(this.viewer);
 
-    // הכי חשוב: להתאים לכל שינוי גודל אמיתי של הקונטיינר
     this.ro = new ResizeObserver(() => {
       if (!this.viewer) return;
-      this.viewer.resize();                 // ייעודי לזה :contentReference[oaicite:7]{index=7}
+      this.viewer.resize();
       this.viewer.scene.requestRender?.();
     });
 

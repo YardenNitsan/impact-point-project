@@ -6,19 +6,5 @@
 .cesium-container {
   position: absolute;
   inset: 0;
-  z-index: 1; /* נמוך */
+  z-index: 1;
 }
-
-
-/* .sidebar-wrapper {
-  position: absolute;
-  top: 42%;
-  left: 0;
-  transform: translateY(-50%);
-
-  width: 5vw;
-  
-  height: 50vh;
-
-  z-index: 3000;
-} */

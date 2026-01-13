@@ -1,0 +1,18 @@
+<div class="simulation-wrapper">
+    <div class="title">Simulations</div>
+    <button class="toggle-button" (click)="handleClick()"><p>{{formHistoryClicked? 'View history' : 'Add a simulation'}}</p></button>
+
+    @if(formHistoryClicked){
+        <app-form></app-form>           
+    }
+    @else {
+        <app-history></app-history>
+    }
+    
+</div>
+
+
+
+
+
+ 

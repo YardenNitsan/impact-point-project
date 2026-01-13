@@ -1,20 +1,16 @@
-import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-form',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
-    CommonModule
   ],
   templateUrl: './form.component.html',
   styleUrl: './form.component.css'
 })
 export class FormComponent {
-
   constructor(private http: HttpClient){
 
   }
@@ -34,16 +30,21 @@ export class FormComponent {
   }
 
   submit() {
-    if(this.trajectoryForm.invalid){
+    if(this.trajectoryForm.invalid)
       return;
-    }
+
     const payload = this.trajectoryForm.value;
     console.log('Payload: ', payload);
-    this.http.post('http://localhost:3000/api/trajectory',
-      payload
+
+    this.http.post('http://localhost:3000/api/simulation',
+      payload,
+      {observe: 'response'}
     ).subscribe({
       next: (response) => {
-        console.log('Server Resonse', response);
+        if (response.status === 201){
+          console.log('Server Resonse', response);
+        }
+        
       },
       error: (err) => {
         console.log('Error: ', err);
