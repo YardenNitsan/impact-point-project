@@ -1,5 +1,8 @@
 import { Component } from '@angular/core';
-import { CesiumDirective } from '../../cesium.directive';
+import { CesiumDirective } from './cesium.directive';
+import { Coordinate, SharedService } from '../services/shared.service';
+import { Subject, takeUntil } from 'rxjs';
+import { Viewer } from 'cesium';
 
 @Component({
   selector: 'app-home',
@@ -10,11 +13,5 @@ import { CesiumDirective } from '../../cesium.directive';
   styleUrl: './home.component.css'
 })
 export class HomeComponent {
-  waitForWindow: number = 300;
-  ngAfterViewInit() {
-    setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, this.waitForWindow);
-  }
 
 }

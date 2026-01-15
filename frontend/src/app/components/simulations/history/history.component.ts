@@ -1,6 +1,9 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SimulationHistoryService, SimulationHistoryItem } from './services/simulationHistory.service';
+import { SimulationHistoryService, SimulationHistoryItem } from './history-services/simulationHistory.service';
+import { Coordinate, SharedService } from '../../services/shared.service';
+import { Subject, Subscriber, Subscription, takeUntil } from 'rxjs';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-history',
@@ -11,23 +14,25 @@ import { SimulationHistoryService, SimulationHistoryItem } from './services/simu
 })
 export class HistoryComponent implements OnInit {
 
-  simulations: SimulationHistoryItem[] = [];
+  private destroyed$: Subject<boolean> = new Subject();
+  protected simulations: SimulationHistoryItem[] = [];
   @Output() countSim = new EventEmitter<number>();
-
-  cardsToNotScroll = 5;
-  count = 0;
-  shouldScroll = false;
+  private cardsToNotScroll = 5;
+  private shouldScroll = false;
 
   constructor(
-    private simulationService: SimulationHistoryService
+    private simulationService: SimulationHistoryService,
+    private shared: SharedService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
-    this.simulationService.getSimulations().subscribe({
+    this.simulationService.getSimulations().pipe(takeUntil(this.destroyed$)).subscribe({
       next: (data) => {
+        console.log(data);
         this.simulations = data;
-        this.countSim.emit(data.length);
         this.shouldScroll = data.length > this.cardsToNotScroll;
+        this.countSim.emit(this.simulations.length);
       },
       error: (err) => {
         console.error('Failed to load simulations', err);
@@ -36,10 +41,11 @@ export class HistoryComponent implements OnInit {
   }
 
   deleteSim(id: string) {
-    this.simulationService.deleteSimulation(id).subscribe({
+    console.log(id);
+    this.simulationService.deleteSimulation(id).pipe(takeUntil(this.destroyed$)).subscribe({
       next: () => {
 
-        this.simulations = this.simulations.filter(sim => sim._id !== id);
+        this.simulations = this.simulations.filter(sim => sim.id !== id);
 
         this.countSim.emit(this.simulations.length);
       },
@@ -48,5 +54,25 @@ export class HistoryComponent implements OnInit {
         alert('Delete failed');
       }
     });
+  }
+  watchSim(id: string) {
+  this.simulationService.watchSimulation(id)
+    .subscribe({
+      next: (sim: any) => {
+        console.log('WATCH RESPONSE:', sim);
+
+        //save coordinates only cause other are not important here
+        this.shared.setData(sim);
+
+        this.router.navigateByUrl('/');
+      },
+      error: () => alert('load failed')
+    });
+  }
+
+
+  ngOnDestroy(){
+    this.destroyed$.next(true);
+    this.destroyed$.complete();
   }
 }

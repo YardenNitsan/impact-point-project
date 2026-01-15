@@ -17,6 +17,13 @@ export const getSimulations = async () => {
   return res.data;
 };
 
+export const getSimulationToWatch = async (id: string ) =>{
+  const res = (await axios.get(
+    `${MONGO_SERVICE_URL}/simulation/${id}`
+  ));
+  return res.data
+};
+
 export const deleteSimulation = async (id: string) => {
   const res = await axios.delete(
     `${MONGO_SERVICE_URL}/simulation/${id}`
