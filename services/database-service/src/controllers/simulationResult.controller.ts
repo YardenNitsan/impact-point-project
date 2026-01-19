@@ -5,20 +5,18 @@ export const getSimulationResults = async (
   _req: Request,
   res: Response
 ) => {
-  try{
+  try {
     const results = await SimulationResult.find()
-        .populate("simulationInputId")
-        .sort({ createdAt: -1 });
-    
-    const response = results.map((r) => ({
+      .sort({ createdAt: -1 });
+
+    const response = results.map(r => ({
       id: r._id,
       durationMinutes: r.durationMinutes,
-      createdAt: r.createdAt,
-    }))
-    console.log(response);
+      createdAt: (r as any).createdAt
+    }));
 
     res.status(200).json(response);
-  } catch (err) {
-    res.status(500).json({message: 'could not return results!'});
+  } catch {
+    res.status(500).json({ message: "could not return results" });
   }
 };

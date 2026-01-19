@@ -1,24 +1,12 @@
 import mongoose from "mongoose";
+import { initialDataSchema } from "./subSchemas";
+import { defaultSchemaOptions } from "./SchemaOptions.model";
 
 const SimulationInputSchema = new mongoose.Schema(
   {
-    initialData: {
-      alt: Number,
-      azimuth: Number,
-      elevation: Number,
-      lat: Number,
-      lon: Number,
-      mass: Number,
-      initialSpeed: Number
-    }
+    initialData: initialDataSchema
   },
-  {
-    timestamps: {
-      createdAt: true,
-      updatedAt: false
-    },
-    versionKey: false
-  }
+  defaultSchemaOptions
 );
 
 export const SimulationInput = mongoose.model(

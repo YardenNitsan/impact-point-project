@@ -1,22 +1,44 @@
 <div class="simulation-wrapper">
-    <div class="title">Simulations</div>
-    <button class="toggle-button" (click)="handleClick()"><p>{{formHistoryClicked? 'View history' : 'Add a simulation'}}</p></button>
 
-    @if(formHistoryClicked){
-        <app-form></app-form>           
-    }
-    @else {
-        <div style="color: white;">
-            Total of simulations is: {{ total }}
-        </div>
+  <div class="title">Simulations</div>
 
-        <app-history (countSim)="onCountChanged($event)"></app-history>
-    }
-    
+  <!-- Top button -->
+  @if (viewMode !== 'details') {
+    <button class="toggle-button" (click)="toggleForm()">
+      <p>
+        {{
+          viewMode === 'form'
+            ? 'View history'
+            : 'Add a simulation'
+        }}
+      </p>
+    </button>
+  }
+
+  <!-- FORM -->
+  @if (viewMode === 'form') {
+    <app-form (back)="backToHistory()"></app-form>
+  }
+
+  <!-- HISTORY -->
+  @if (viewMode === 'history') {
+
+    <div style="color: white; margin-bottom: 10px;">
+      Total of simulations is: {{ total }}
+    </div>
+
+    <app-history
+      (countSim)="onCountChanged($event)"
+      (openDetails)="openDetails($event)">
+    </app-history>
+  }
+
+  <!-- DETAILS -->
+  @if (viewMode === 'details') {
+    <app-details
+      [simulationId]="selectedSimulationId!"
+      (back)="backToHistory()">
+    </app-details>
+  }
+
 </div>
-
-
-
-
-
- 

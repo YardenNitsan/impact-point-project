@@ -14,11 +14,14 @@ import { Router } from '@angular/router';
 })
 export class HistoryComponent implements OnInit {
 
-  private destroyed$: Subject<boolean> = new Subject();
+  private destroyed$: Subject<void> = new Subject();
   protected simulations: SimulationHistoryItem[] = [];
-  @Output() countSim = new EventEmitter<number>();
   private cardsToNotScroll = 5;
   private shouldScroll = false;
+  @Output() countSim = new EventEmitter<number>();
+  @Output() openDetails = new EventEmitter<string>();
+
+  
 
   constructor(
     private simulationService: SimulationHistoryService,
@@ -58,11 +61,11 @@ export class HistoryComponent implements OnInit {
   watchSim(id: string) {
   this.simulationService.watchSimulation(id)
     .subscribe({
-      next: (sim: any) => {
-        console.log('WATCH RESPONSE:', sim);
+      next: (coords: Coordinate[]) => {
+        console.log('WATCH RESPONSE:', coords);
 
         //save coordinates only cause other are not important here
-        this.shared.setData(sim);
+        this.shared.setData(coords);
 
         this.router.navigateByUrl('/');
       },
@@ -70,9 +73,13 @@ export class HistoryComponent implements OnInit {
     });
   }
 
+  details(id: string) {
+    this.openDetails.emit(id);
+  }
+
 
   ngOnDestroy(){
-    this.destroyed$.next(true);
+    this.destroyed$.next();
     this.destroyed$.complete();
   }
 }

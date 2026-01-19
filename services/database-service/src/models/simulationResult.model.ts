@@ -1,22 +1,27 @@
 import mongoose from "mongoose";
+import { coordinateSchema } from "./subSchemas";
+import { defaultSchemaOptions } from "./SchemaOptions.model";
 
 const SimulationResultSchema = new mongoose.Schema(
   {
     simulationInputId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      unique: true,
+      ref: "SimulationInput",
+      required: true
     },
-    coordinates: [
-      {
-        lon: Number,
-        lat: Number,
-        alt: Number,
-      },
-    ],
-    durationMinutes: Number,
+
+    coordinates: {
+      type: [coordinateSchema],
+      required: true,
+      default: []
+    },
+
+    durationMinutes: {
+      type: Number,
+      required: true
+    }
   },
-  { timestamps: true }
+  defaultSchemaOptions
 );
 
 export const SimulationResult = mongoose.model(

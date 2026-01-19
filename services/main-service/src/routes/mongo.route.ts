@@ -1,5 +1,7 @@
 import { Router, Request, Response } from "express";
 import { saveSimulation, getSimulations, deleteSimulation, getSimulationToWatch } from "../services/mongo.service";
+import { getSimulationDetails } from "../services/mongo.service";
+
 
 const routerMongo = Router();
 
@@ -31,6 +33,17 @@ routerMongo.get("/:id", async (req, res) => {
     res.status(500).json({message: 'Mongo service unavailable'});
   }
 })
+
+routerMongo.get("/:id/details", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const details = await getSimulationDetails(id);
+    res.status(200).json(details);
+  } catch {
+    res.status(500).json({ message: "Mongo service unavailable" });
+  }
+});
+
 
 routerMongo.delete("/:id", async (req: Request, res: Response) => {
   try {
