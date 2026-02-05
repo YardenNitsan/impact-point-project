@@ -1,13 +1,13 @@
 import math
 from typing import Dict, List
 
-from services.algorithm_service.modules.state.state import State3DOF
-from services.algorithm_service.modules.solver.run_simulation import run_simulation
-from services.algorithm_service.modules.impact.impact import compute_impact_from_trajectory
+from modules.state.state import State3DOF
+from modules.solver.run_simulation import run_simulation
+from modules.impact.impact import compute_impact_from_trajectory
 
-from services.algorithm_service.modules.atmosphere.environment import get_sea_level_environment
-from services.algorithm_service.modules.aerodynamics.aero_tables import default_demo_table
-from services.algorithm_service.modules.aerodynamics.aerodynamics import AeroRef
+from modules.atmosphere.environment import get_sea_level_environment
+from modules.aerodynamics.aero_tables import default_demo_table
+from modules.aerodynamics.aerodynamics import AeroRef
 
 
 EARTH_RADIUS = 6371000.0  # meters
@@ -198,8 +198,8 @@ def simulate_impact(initial_data: Dict) -> Dict:
 if __name__ == "__main__":
     initial_data = {
         "alt": 1000.0,
-        "azimuth": 90.0,        # מזרחה
-        "elevation": 10.0,      # מעלות
+        "azimuth": 90.0,        #east
+        "elevation": 10.0,      #degrees
         "lat": 32.0,
         "lon": 34.8,
         "mass": 10.0,
@@ -208,20 +208,20 @@ if __name__ == "__main__":
 
     result = simulate_impact(initial_data)
 
-    print("\n📍 IMPACT POINT")
+    print("\nIMPACT POINT")
     print(result["impact"])
 
-    print("\n🧭 FIRST 5 TRAJECTORY POINTS")
+    print("\nFIRST 5 TRAJECTORY POINTS")
     for p in result["trajectory"][:5]:
         print(p)
 
-    print("\n🧭 LAST 5 TRAJECTORY POINTS")
+    print("\nLAST 5 TRAJECTORY POINTS")
     for p in result["trajectory"][-5:]:
         print(p)
 
-    print("\n📊 SIMULATION SUMMARY")
-    print(f"🕒 Physical flight time: {result['physical_time']:.2f} seconds")
-    print(f"🔢 Trajectory points: {result['points_count']}")
+    print("\nSIMULATION SUMMARY")
+    print(f"Physical flight time: {result['physical_time']:.2f} seconds")
+    print(f"Trajectory points: {result['points_count']}")
 
 
 

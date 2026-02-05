@@ -1,8 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import bisect
-import math
-from typing import List, Sequence, Tuple
+from typing import Sequence, Tuple
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:

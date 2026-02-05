@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional
 
-from services.algorithm_service.modules.state.state import State3DOF
+from modules.state.state import State3DOF
 
 
 @dataclass(frozen=True)

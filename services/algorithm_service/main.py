@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import time
 
 # Import your algorithm
-from services.algorithm_service.modules.impact.simulated_impact import simulate_impact
+from modules.impact.simulated_impact import simulate_impact
 
 # ===============================
 # FastAPI App
@@ -42,21 +42,21 @@ def simulate(input: SimulationInput):
     try:
         data = input.model_dump()
 
-        print("\n📥 Received simulation request:")
+        print("\nReceived simulation request:")
         print(data)
 
         result = simulate_impact(data)
 
         duration = time.time() - start_time
 
-        print("\n✅ Simulation completed")
-        print(f"⏱ Runtime: {duration:.3f} seconds")
+        print("\nSimulation completed")
+        print(f"Runtime: {duration:.3f} seconds")
 
         if isinstance(result, dict) and "trajectory" in result:
-            print(f"📈 Trajectory points: {len(result['trajectory'])}")
+            print(f"Trajectory points: {len(result['trajectory'])}")
 
         return result
 
     except Exception as e:
-        print("\n❌ Simulation error:", e)
+        print("\nSimulation error:", e)
         raise HTTPException(status_code=500, detail=str(e))

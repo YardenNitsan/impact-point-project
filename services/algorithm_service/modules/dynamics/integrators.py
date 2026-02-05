@@ -1,5 +1,4 @@
-# services/algorithm_service/modules/dynamics/integrators.py
-from services.algorithm_service.modules.state.state import State3DOF
+from modules.state.state import State3DOF
 
 
 def rk4_step(state: State3DOF, dt: float, derivs, **kwargs):

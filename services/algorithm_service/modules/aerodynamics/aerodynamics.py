@@ -1,10 +1,9 @@
-# services/algorithm_service/modules/first_step/aerodynamics.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple
 import math
 
-from services.algorithm_service.modules.atmosphere.isa import speed_of_sound
+from modules.atmosphere.isa import speed_of_sound
 
 DEFAULT_GAMMA = 1.4
 

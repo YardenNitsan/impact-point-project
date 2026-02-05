@@ -1,11 +1,10 @@
-# services/algorithm_service/modules/solver/solver_3dof.py
 import math
-from services.algorithm_service.modules.state.state import State3DOF
+from modules.state.state import State3DOF
 
-from services.algorithm_service.modules.atmosphere.isa import isa_atmosphere
-from services.algorithm_service.modules.dynamics.dynamics_3dof import accelerations_3dof_inertial
-from services.algorithm_service.modules.aerodynamics.aerodynamics import compute_Xv_Zv_My_from_table, AeroRef
-from services.algorithm_service.modules.aerodynamics.aero_tables import AeroTable2D
+from modules.atmosphere.isa import isa_atmosphere
+from modules.dynamics.dynamics_3dof import accelerations_3dof_inertial
+from modules.aerodynamics.aerodynamics import compute_Xv_Zv_My_from_table, AeroRef
+from modules.aerodynamics.aero_tables import AeroTable2D
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:
@@ -92,6 +91,6 @@ def derivatives(
         z=state.vz,
         vx=ax,
         vz=az,
-        theta=state.q,   # ✅ FIX: theta_dot = q (NOT q_use)
+        theta=state.q,
         q=q_dot
     )

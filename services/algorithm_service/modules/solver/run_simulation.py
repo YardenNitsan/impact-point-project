@@ -1,8 +1,7 @@
-# services/algorithm_service/modules/solver/run_simulation.py
 import math
-from services.algorithm_service.modules.dynamics.integrators import rk4_step
-from services.algorithm_service.modules.solver.solver_3dof import derivatives
-from services.algorithm_service.modules.state.state import State3DOF
+from modules.dynamics.integrators import rk4_step
+from modules.solver.solver_3dof import derivatives
+from modules.state.state import State3DOF
 
 
 def _is_sane(s: State3DOF) -> bool:

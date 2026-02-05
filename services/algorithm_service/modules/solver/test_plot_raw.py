@@ -1,12 +1,11 @@
 import math
 import matplotlib.pyplot as plt
-import numpy as np
 
-from services.algorithm_service.modules.state.state import State3DOF
-from services.algorithm_service.modules.solver.run_simulation import run_simulation
-from services.algorithm_service.modules.atmosphere.environment import get_sea_level_environment
-from services.algorithm_service.modules.aerodynamics.aero_tables import default_demo_table
-from services.algorithm_service.modules.aerodynamics.aerodynamics import AeroRef
+from modules.state.state import State3DOF
+from modules.solver.run_simulation import run_simulation
+from modules.atmosphere.environment import get_sea_level_environment
+from modules.aerodynamics.aero_tables import default_demo_table
+from modules.aerodynamics.aerodynamics import AeroRef
 
 
 def main():
