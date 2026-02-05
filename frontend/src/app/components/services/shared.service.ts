@@ -21,6 +21,12 @@ export class SharedService {
   get snapshot(): Coordinate[] | null {
     return this.subject.value;
   }
+  public lastSimulationDuration = 60;
+
+  setDuration(seconds: number) {
+    this.lastSimulationDuration = seconds;
+  }
+
 
   //give BehaviorSubject new value
   setData(coords: Coordinate[]) {

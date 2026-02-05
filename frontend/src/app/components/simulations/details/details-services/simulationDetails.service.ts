@@ -20,7 +20,7 @@ export interface Coordinate {
 
 export interface SimulationDetails {
   createdAt: string;
-  durationMinutes: number;
+  durationSeconds: number;
   initialData: InitialData;
   coordinates: Coordinate[];
 }

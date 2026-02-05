@@ -9,7 +9,7 @@ export interface SimulationResultDocument extends mongoose.Document {
     lat: number;
     alt: number;
   }[];
-  durationMinutes: number;
+  durationSeconds: number;
   createdAt: Date;   // 🔥 זה היה חסר
 }
 
@@ -26,9 +26,9 @@ const SimulationResultSchema = new mongoose.Schema(
       required: true,
       default: [],
     },
-    durationMinutes: {
-      type: Number,
-      required: true,
+    durationSeconds: {
+    type: Number,
+    required: true
     },
   },
   defaultSchemaOptions

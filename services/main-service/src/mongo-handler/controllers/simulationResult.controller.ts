@@ -10,9 +10,9 @@ export const getSimulationResults = async (
 
     res.status(200).json(
       results.map(r => ({
-        id: r._id.toString(),          // 🔥 חשוב
+        id: r._id.toString(), 
         createdAt: r.createdAt,
-        durationMinutes: r.durationMinutes,
+        durationSeconds: r.durationSeconds,
       }))
     );
   } catch (err) {

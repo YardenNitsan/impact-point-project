@@ -9,8 +9,10 @@ const router = Router();
 
 router.post("/", createSimulation);
 router.get("/", getSimulationResults);
-router.get("/:id", getSimulationToWatch);
+
 router.get("/:id/details", getSimulationDetails);
+router.get("/:id", getSimulationToWatch);
+
 router.delete("/:id", deleteSimulation);
 
 export default router;

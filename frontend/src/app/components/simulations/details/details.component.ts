@@ -20,11 +20,13 @@ import {
   templateUrl: './details.component.html',
   styleUrl: './details.component.css'
 })
+
 export class DetailsComponent implements OnInit {
 
   @Input({ required: true }) simulationId!: string;
   @Output() back = new EventEmitter<void>();
 
+  formattedDuration = '';
   details!: SimulationDetails;
   loading = true;
 
@@ -33,6 +35,7 @@ export class DetailsComponent implements OnInit {
   ngOnInit(): void {
     this.detailsService.getDetails(this.simulationId).subscribe({
       next: (data) => {
+        this.formattedDuration = this.formatTime(data.durationSeconds);
         this.details = data;
         this.loading = false;
       },
@@ -42,5 +45,13 @@ export class DetailsComponent implements OnInit {
       }
     });
   }
+
+  private formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
 }
 

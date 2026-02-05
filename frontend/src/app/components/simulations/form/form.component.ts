@@ -34,26 +34,35 @@ export class FormComponent {
   @Output() isSubmitted = new EventEmitter<boolean>();
 
   submit() {
-    if(this.trajectoryForm.invalid)
-      return;
+  if (this.trajectoryForm.invalid) return;
 
-    const payload = this.trajectoryForm.value;
-    console.log('Payload: ', payload);
+  const raw = this.trajectoryForm.value;
 
-    this.http.post('http://localhost:3000/api/simulation',
-      payload,
-      {observe: 'response'}
-    ).subscribe({
-      next: (response) => {
-        if (response.status === 201){
-          this.isSubmitted.emit(true);
-          console.log('Server Resonse', response);
-        }
-        
-      },
-      error: (err) => {
-        console.log('Error: ', err);
-      }
-    })
-  }
+  const payload = {
+    mass: Number(raw.mass),
+    initialSpeed: Number(raw.speed), // 🔥 השם הנכון לפייתון
+    elevation: Number(raw.elevation),
+    azimuth: Number(raw.azimuth),
+    lat: Number(raw.lat),
+    lon: Number(raw.lon),
+    alt: Number(raw.alt)
+  };
+
+  console.log('Payload:', payload);
+
+  this.http.post(
+    'http://localhost:3000/api/simulation',
+    payload,
+    { observe: 'response' }
+  ).subscribe({
+    next: (response) => {
+      console.log('Server Response', response);
+      this.isSubmitted.emit(true);
+    },
+    error: (err) => {
+      console.log('Error:', err);
+    }
+  });
+}
+
 }

@@ -1,29 +1,48 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
+
 import { SimulationResult } from "../models/simulationResult.model";
 import { SimulationInput } from "../models/simulationInput.model";
 
-export const deleteSimulation = async (
-  req: Request<{ id: string }>,
-  res: Response
-) => {
+export const deleteSimulation = async (req: Request, res: Response) => {
   try {
-    const result = await SimulationResult.findById(req.params.id);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid id"
+      });
+    }
+
+    // 1. Find result
+    const result = await SimulationResult.findById(id);
 
     if (!result) {
-      return res.status(404).json({ error: "Simulation not found" });
+      return res.status(404).json({
+        message: "Simulation not found"
+      });
     }
 
-    // delete result
-    await SimulationResult.deleteOne({ _id: result._id });
+    // 2. Delete result
+    await SimulationResult.findByIdAndDelete(id);
 
-    // delete input if exists
+    // 3. Delete linked input
     if (result.simulationInputId) {
-      await SimulationInput.deleteOne({ _id: result.simulationInputId });
+      await SimulationInput.findByIdAndDelete(
+        result.simulationInputId
+      );
     }
 
-    res.status(200).json({ message: "Simulation deleted" });
-  } catch (err) {
-    console.error("DELETE ERROR:", err);
-    res.status(500).json({ error: "Delete failed" });
+    res.json({
+      message: "Simulation deleted successfully"
+    });
+
+  } catch (error: any) {
+    console.error("Delete error:", error);
+
+    res.status(500).json({
+      message: "Delete failed",
+      error: error.message
+    });
   }
 };

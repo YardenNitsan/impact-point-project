@@ -23,7 +23,7 @@ export const getSimulationDetails = async (
 
     res.status(200).json({
       createdAt: result.createdAt,
-      durationMinutes: result.durationMinutes,
+      durationSeconds: result.durationSeconds,
       initialData: input.initialData,
       coordinates: result.coordinates,
     });

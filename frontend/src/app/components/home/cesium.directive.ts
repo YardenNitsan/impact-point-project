@@ -1,56 +1,110 @@
-import { Directive, ElementRef, AfterViewInit, OnDestroy } from "@angular/core";
-import { Viewer, Ion, createWorldTerrainAsync, createOsmBuildingsAsync } from "cesium";
+import {
+  Directive,
+  ElementRef,
+  AfterViewInit,
+  OnDestroy
+} from "@angular/core";
+
+import {
+  Ion,
+  Viewer,
+  createWorldTerrainAsync,
+  createOsmBuildingsAsync,
+  Cesium3DTileset
+} from "cesium";
+
 import { CesiumManager } from "./modules/cesium-manager-module";
 import { environment } from "../../../../environment";
 
-@Directive({ selector: "[appCesium]" })
-export class CesiumDirective implements AfterViewInit, OnDestroy {
+/* =========================
+   Buildings tuning
+   ========================= */
 
+// בניינים מופיעים רק כשקרובים
+const BUILDINGS_ENABLE_HEIGHT = 8000;
+
+// מעל זה → נכבים
+const BUILDINGS_DISABLE_HEIGHT = 15000;
+
+// איכות הבניינים (גבוה = פחות עומס)
+const BUILDINGS_MAX_SSE = 192;
+
+@Directive({
+  selector: "[appCesium]",
+})
+export class CesiumDirective
+  implements AfterViewInit, OnDestroy
+{
   private viewer?: Viewer;
-  private ro?: ResizeObserver;
+  private resizeObserver?: ResizeObserver;
+  private buildings?: Cesium3DTileset;
 
   constructor(
-    //el is the element we are about to draw on it
     private el: ElementRef<HTMLElement>,
-    private cesiumManager: CesiumManager
+    private manager: CesiumManager
   ) {}
 
-  //to make viewer in the DOM, ngOnInit a little fast sometimes. 
-  async ngAfterViewInit(): Promise<void> {
+  async ngAfterViewInit() {
     Ion.defaultAccessToken = environment.cesium_public_token;
 
     this.viewer = new Viewer(this.el.nativeElement, {
       timeline: true,
       animation: true,
-      fullscreenButton: true,
-      homeButton: true,
-      geocoder: true,
-      sceneModePicker: true,
-      navigationHelpButton: true
+      requestRenderMode: true,
+      maximumRenderTimeChange: Infinity,
     });
 
-    this.viewer.terrainProvider = await createWorldTerrainAsync();
-    this.viewer.scene.primitives.add(await createOsmBuildingsAsync());
-    this.viewer.scene.globe.depthTestAgainstTerrain = true;
+    this.viewer.terrainProvider =
+      await createWorldTerrainAsync();
 
-    //from here the world is ready 
-    this.cesiumManager.setViewer(this.viewer);
+    // 🔥 טוען בניינים פעם אחת בלבד
+    this.buildings = await createOsmBuildingsAsync();
+    this.buildings.maximumScreenSpaceError =
+      BUILDINGS_MAX_SSE;
 
-    this.ro = new ResizeObserver(() => {
-      if (!this.viewer || this.viewer.isDestroyed()) return;
+    this.buildings.show = false; // מתחיל כבוי
+    this.viewer.scene.primitives.add(this.buildings);
+
+    // 🔥 מערכת הפעלה חכמה לבניינים
+    this.viewer.camera.moveEnd.addEventListener(() => {
+      if (!this.viewer || !this.buildings) return;
+
+      const h =
+        this.viewer.camera.positionCartographic.height;
+
+      if (h < BUILDINGS_ENABLE_HEIGHT) {
+        this.buildings.show = true;
+      }
+
+      if (h > BUILDINGS_DISABLE_HEIGHT) {
+        this.buildings.show = false;
+      }
+
+      this.viewer.scene.requestRender();
+    });
+
+    // manager
+    this.manager.setViewer(this.viewer);
+
+    // resize handling
+    this.resizeObserver = new ResizeObserver(() => {
+      if (!this.viewer || this.viewer.isDestroyed())
+        return;
+
       this.viewer.resize();
-      this.viewer.scene.requestRender?.();
+      this.viewer.scene.requestRender();
     });
 
+    this.resizeObserver.observe(this.el.nativeElement);
 
-    this.ro.observe(this.el.nativeElement);
+    this.viewer.scene.requestRender();
   }
 
-  ngOnDestroy(): void {
-    this.ro?.disconnect();
-    this.ro = undefined;
+  ngOnDestroy() {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = undefined;
 
-    this.cesiumManager.clearViewer();
+    this.manager.clearViewer();
 
     this.viewer?.destroy();
     this.viewer = undefined;

@@ -17,6 +17,7 @@ export class HistoryComponent implements OnInit {
   private destroyed$: Subject<void> = new Subject();
   protected simulations: SimulationHistoryItem[] = [];
   private cardsToNotScroll = 5;
+  private format ="";
   private shouldScroll = false;
   @Output() countSim = new EventEmitter<number>();
   @Output() openDetails = new EventEmitter<string>();
@@ -33,7 +34,11 @@ export class HistoryComponent implements OnInit {
     this.simulationService.getSimulations().pipe(takeUntil(this.destroyed$)).subscribe({
       next: (data) => {
         console.log(data);
-        this.simulations = data;
+        this.simulations = data.map(sim => ({
+          ...sim,
+          formattedDuration: this.formatTime(sim.durationSeconds)
+        }));
+
         this.shouldScroll = data.length > this.cardsToNotScroll;
         this.countSim.emit(this.simulations.length);
       },
@@ -72,6 +77,16 @@ export class HistoryComponent implements OnInit {
       error: () => alert('load failed')
     });
   }
+
+  formatTime(seconds: number): string {
+    if (!seconds) return "0:00";
+
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
 
   details(id: string) {
     this.openDetails.emit(id);

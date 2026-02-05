@@ -6,8 +6,10 @@ import { Coordinate } from '../../../services/shared.service';
 export interface SimulationHistoryItem {
   id: string;
   createdAt: string;
-  durationMinutes: number;
+  durationSeconds: number;
+  formattedDuration?: string;
 }
+
 
 
 @Injectable({ providedIn: 'root' })
