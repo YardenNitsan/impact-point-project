@@ -1,11 +1,14 @@
 import 'dotenv/config'
 import express from "express";
 import cors from "cors";
-import routerMongo from './routes/mongo.route';
+import router from './mongo-handler/routes/mongo.route';
 import { errorHandler } from './middlewares/error-handler';
+import mongoose from 'mongoose';
+
 
 const ALLOWED_ORIGIN="http://localhost:4200";
 const PORT=3000;
+const MONGO_URI = "mongodb://localhost:27017/impact-point";
 
 const app = express();
 app.use(cors({
@@ -17,7 +20,16 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.use("/api/simulation", routerMongo);
+// Mongo connection
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log("Mongo connected"))
+  .catch((err: Error) => {
+    console.error(err);
+    process.exit(1);
+  });
+
+app.use("/api/simulation", router);
 
 app.use(errorHandler);
 
