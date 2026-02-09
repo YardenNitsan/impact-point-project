@@ -1,69 +1,77 @@
 import math
 import matplotlib.pyplot as plt
 
-from modules.state.state import State3DOF
-from modules.solver.run_simulation import run_simulation
-from modules.atmosphere.environment import get_sea_level_environment
-from modules.aerodynamics.aero_tables import default_demo_table
-from modules.aerodynamics.aerodynamics import AeroRef
+from modules.impact.simulated_impact import simulate_impact
 
+# -----------------------------
+# Test scenario
+# -----------------------------
 
-def main():
-    # ===== same as your simulate_impact() =====
-    alt = 1000.0
-    elevation_deg = 45.0
-    lat0 = 32.0
-    lon0 = 34.8
-    mass = 10.0
-    V0 = 1500.0
+initial_data = {
+    "alt": 1000.0,
+    "azimuth": 0.0,
+    "elevation": 45.0,
+    "lat": 32.0,
+    "lon": 34.0,
+    "mass": 10.0,
+    "initialSpeed": 1000.0
+}
 
-    elevation = math.radians(elevation_deg)
-    vx0 = V0 * math.cos(elevation)
-    vz0 = V0 * math.sin(elevation)
+result = simulate_impact(initial_data)
 
-    state0 = State3DOF(
-        x=0.0,
-        z=alt,
-        vx=vx0,
-        vz=vz0,
-        theta=elevation,
-        q=0.0
-    )
+traj = result["trajectory"]
 
-    T0, P0 = get_sea_level_environment(lat0, lon0)
+# -----------------------------
+# Extract data
+# -----------------------------
 
-    dt = 0.01
-    traj = run_simulation(
-        state0=state0,
-        dt=dt,
-        max_time=300.0,
-        mass=mass,
-        Iyy=2.0,
-        g=9.81,
-        T0=T0,
-        P0=P0,
-        aero_ref=AeroRef(Sref=0.05, lref=0.30),
-        aero_table=default_demo_table(),
-        lcg=0.02
-    )
+x = []
+z = []
+v = []
+theta = []
 
-    # ===== RAW time series (NO downsample) =====
-    t = [i * dt for i in range(len(traj))]
-    z = [s.z for s in traj]
+for i, p in enumerate(traj):
+    # approximate horizontal distance from start
+    dx = (p["lon"] - traj[0]["lon"]) * 111000
+    dy = (p["lat"] - traj[0]["lat"]) * 111000
+    dist = math.hypot(dx, dy)
 
-    plt.figure()
-    plt.plot(t, z)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Altitude z (m)")
-    plt.title("RAW Altitude vs Time (no downsample)")
-    plt.grid(True)
-    plt.show()
+    x.append(dist)
+    z.append(p["alt"])
 
-    print("Final altitude:", traj[-1].z)
-    print("Final vz:", traj[-1].vz)
-    print("Total time:", t[-1])
-    print("Points:", len(traj))
+    speed = math.hypot(p["vx"], p["vz"])
+    v.append(speed)
 
+    theta.append(p["theta"])
 
-if __name__ == "__main__":
-    main()
+t = [i * 0.01 for i in range(len(traj))]
+
+# -----------------------------
+# Plot graphs
+# -----------------------------
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(3, 1, 1)
+plt.plot(x, z)
+plt.title("Trajectory (Range vs Altitude)")
+plt.xlabel("Range [m]")
+plt.ylabel("Altitude [m]")
+plt.grid()
+
+plt.subplot(3, 1, 2)
+plt.plot(t, v)
+plt.title("Speed vs Time")
+plt.xlabel("Time [s]")
+plt.ylabel("Speed [m/s]")
+plt.grid()
+
+plt.subplot(3, 1, 3)
+plt.plot(t, theta)
+plt.title("Pitch Angle vs Time")
+plt.xlabel("Time [s]")
+plt.ylabel("Theta [rad]")
+plt.grid()
+
+plt.tight_layout()
+plt.show()

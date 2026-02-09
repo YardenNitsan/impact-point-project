@@ -22,6 +22,30 @@ def meters_to_latlon(dx: float, dy: float, lat0: float, lon0: float):
     dlon = (dx / (EARTH_RADIUS * math.cos(math.radians(lat0)))) * (180.0 / math.pi)
     return lat0 + dlat, lon0 + dlon
 
+
+def _normalize_launch_angles(azimuth_rad: float, elevation_rad: float):
+    """Normalize any elevation input to [-90°, 90°] by rotating azimuth 180° if needed.
+
+    This keeps the 3DOF longitudinal model well-defined and matches the intuition:
+    shooting 'backwards' is equivalent to rotating azimuth and using a forward elevation.
+    """
+    # wrap elevation to (-pi, pi]
+    elev = (elevation_rad + math.pi) % (2.0 * math.pi) - math.pi
+    az = azimuth_rad
+
+    half_pi = 0.5 * math.pi
+    if elev > half_pi:
+        elev = math.pi - elev
+        az += math.pi
+    elif elev < -half_pi:
+        elev = -math.pi - elev
+        az += math.pi
+
+    # wrap azimuth to [0, 2pi)
+    az = az % (2.0 * math.pi)
+    return az, elev
+
+
 def downsample_distance(path: List[Dict], min_dist: float = 5.0) -> List[Dict]:
     """
     Reduce trajectory points by keeping only points that are
@@ -47,6 +71,7 @@ def downsample_distance(path: List[Dict], min_dist: float = 5.0) -> List[Dict]:
         filtered.append(path[-1])
 
     return filtered
+
 
 def adaptive_downsample(path: List[Dict], target_points: int = 500) -> List[Dict]:
     """
@@ -80,6 +105,10 @@ def simulate_impact(initial_data: Dict) -> Dict:
     alt = float(initial_data["alt"])
     azimuth = math.radians(initial_data["azimuth"])
     elevation = math.radians(initial_data["elevation"])
+
+    # Normalize angles for 3DOF longitudinal model
+    azimuth, elevation = _normalize_launch_angles(azimuth, elevation)
+
     lat0 = float(initial_data["lat"])
     lon0 = float(initial_data["lon"])
     mass = float(initial_data["mass"])
@@ -108,7 +137,7 @@ def simulate_impact(initial_data: Dict) -> Dict:
     # ----------------------------
     # 4. run simulation
     # ----------------------------
-    dt = 0.01  # [sec] physical time step
+    dt = 0.02  # [sec] physical time step
 
     trajectory = run_simulation(
         state0=state0,
@@ -195,13 +224,14 @@ def simulate_impact(initial_data: Dict) -> Dict:
         "raw_points_count": raw_points
     }
 
+
 if __name__ == "__main__":
     initial_data = {
         "alt": 1000.0,
-        "azimuth": 90.0,        #east
-        "elevation": 10.0,      #degrees
-        "lat": 32.0,
-        "lon": 34.8,
+        "azimuth": 270.0,        # east
+        "elevation": 45.0,       # degrees
+        "lat": 32.0853,
+        "lon": 34.7818,
         "mass": 10.0,
         "initialSpeed": 300.0
     }
@@ -222,8 +252,3 @@ if __name__ == "__main__":
     print("\nSIMULATION SUMMARY")
     print(f"Physical flight time: {result['physical_time']:.2f} seconds")
     print(f"Trajectory points: {result['points_count']}")
-
-
-
-
-

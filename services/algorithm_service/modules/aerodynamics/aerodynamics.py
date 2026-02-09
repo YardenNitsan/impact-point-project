@@ -1,11 +1,11 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Tuple
 import math
 
-from modules.atmosphere.isa import speed_of_sound
-
 DEFAULT_GAMMA = 1.4
+R_AIR = 287.05
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:
@@ -14,49 +14,8 @@ def _clamp(x: float, lo: float, hi: float) -> float:
 
 @dataclass(frozen=True)
 class AeroRef:
-    Sref: float   # [m^2]
-    lref: float   # [m]
-
-
-def compressible_dynamic_pressure(P: float, M: float, gamma: float = DEFAULT_GAMMA) -> float:
-    return 0.5 * gamma * P * (M * M)
-
-
-def aerodynamic_DLM(P: float, M: float, CD: float, CL: float, CM: float, ref: AeroRef,
-                    gamma: float = DEFAULT_GAMMA) -> Tuple[float, float, float]:
-    qbar = compressible_dynamic_pressure(P, M, gamma)
-    D = qbar * ref.Sref * CD
-    L = qbar * ref.Sref * CL
-    Mp = qbar * ref.Sref * ref.lref * CM
-    return D, L, Mp
-
-
-def effective_CM(
-    *,
-    CM0: float,
-    CL: float,
-    alpha: float,
-    Cm_alpha: float,
-    Cmq: float,
-    q: float,
-    V: float,
-    ref: AeroRef,
-    lcg: float = 0.0,
-) -> float:
-    alpha_lim = math.radians(20.0)
-    alpha_eff = _clamp(alpha, -alpha_lim, alpha_lim)
-
-    q_eff = _clamp(q, -50.0, 50.0)
-
-    CM_static = CM0 + Cm_alpha * alpha_eff
-    CM_cg = CM_static + (lcg / ref.lref) * CL
-
-    V_eff = max(V, 10.0)
-    damp = Cmq * (q_eff * ref.lref / (2.0 * V_eff))
-
-    CM = CM_cg + damp
-    CM = _clamp(CM, -1.5, 1.5)
-    return CM
+    Sref: float
+    lref: float
 
 
 def compute_Xv_Zv_My_from_table(
@@ -65,60 +24,63 @@ def compute_Xv_Zv_My_from_table(
     T: float,
     vx: float,
     vz: float,
-    q: float,
+    wind_x: float,
+    wind_z: float,
     alpha: float,
-    CD: float,
-    CL: float,
-    CM0: float,
-    Cm_alpha: float,
-    Cmq: float,
+    mach: float,
+    coeffs,
     ref: AeroRef,
+    q: float,
     lcg: float = 0.0,
-    gamma: float = DEFAULT_GAMMA
 ) -> Tuple[float, float, float, float, float]:
+    """Convert aerodynamic coefficients to forces and moment in inertial frame.
+
+    This follows your project proposal requirement:
+    - include Pitch Damping derivative Cmq (moment depends on pitch rate q)
+    - include CG correction via +CL * lcg
+    (see proposal Pitch Damping + CG correction section).
     """
-    Returns aerodynamic forces in the SAME convention as simulation:
-      +x forward, +z UP.
 
-    Drag acts opposite the velocity vector.
-    Lift acts perpendicular to velocity in the x-z plane (positive lift -> +z).
-    """
+    # Table object expected: AeroCoeffsTable (CD, CL, CM0, Cm_alpha, Cmq)
+    CD = float(coeffs.CD)
+    CL = float(coeffs.CL)
+    CM0 = float(coeffs.CM0)
+    Cm_alpha = float(coeffs.Cm_alpha)
+    Cmq = float(coeffs.Cmq)
 
-    V = math.hypot(vx, vz)
-    a = speed_of_sound(T, gamma=gamma)
-    Mach = (V / a) if (a > 1e-9) else 0.0
-
-    CM_eff = effective_CM(
-        CM0=CM0,
-        CL=CL,
-        alpha=alpha,
-        Cm_alpha=Cm_alpha,
-        Cmq=Cmq,
-        q=q,
-        V=V,
-        ref=ref,
-        lcg=lcg,
-    )
-
-    D, L, My = aerodynamic_DLM(P, Mach, CD, CL, CM_eff, ref, gamma=gamma)
+    # Relative velocity
+    vx_rel = vx - wind_x
+    vz_rel = vz - wind_z
+    V = math.hypot(vx_rel, vz_rel)
 
     if V < 1e-6:
-        # basically no aerodynamic direction
-        return 0.0, 0.0, My, Mach, CM_eff
+        return 0.0, 0.0, 0.0, mach, CM0
 
-    ux = vx / V
-    uz = vz / V
+    # Flight-path angle of RELATIVE airflow
+    gamma_rel = math.atan2(vz_rel, vx_rel)
 
-    # Drag opposite velocity
-    Fx_drag = -D * ux
-    Fz_drag = -D * uz
+    # Density and dynamic pressure
+    rho = P / (R_AIR * T)
+    qbar = 0.5 * rho * V * V
 
-    # Lift: perpendicular to velocity, choose direction that gives +z for positive CL
-    # Perp unit in x-z plane: (-uz, +ux)
-    Fx_lift = -L * uz
-    Fz_lift =  L * ux
+    # Aerodynamic forces in wind axes
+    D = qbar * ref.Sref * CD
+    L = qbar * ref.Sref * CL
 
-    Xv = Fx_drag + Fx_lift
-    Zv = Fz_drag + Fz_lift
+    # Convert to inertial frame (x forward, z up)
+    Xv = -D * math.cos(gamma_rel) - L * math.sin(gamma_rel)
+    Zv = -D * math.sin(gamma_rel) + L * math.cos(gamma_rel)
 
-    return Xv, Zv, My, Mach, CM_eff
+    # Pitching moment coefficient with required corrections:
+    V_safe = max(V, 1e-3)
+    CM_eff = (
+        CM0
+        + Cm_alpha * alpha
+        + Cmq * (q * ref.lref / (2.0 * V_safe))
+        + CL * lcg
+    )
+
+    My = qbar * ref.Sref * ref.lref * CM_eff
+
+    return Xv, Zv, My, mach, CM_eff
+

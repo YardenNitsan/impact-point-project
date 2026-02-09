@@ -1,23 +1,11 @@
+# modules/solver/solver_3dof.py
+
 import math
+
 from modules.state.state import State3DOF
-
-from modules.atmosphere.isa import isa_atmosphere
-from modules.dynamics.dynamics_3dof import accelerations_3dof_inertial
+from modules.atmosphere.isa import isa_atmosphere, speed_of_sound
 from modules.aerodynamics.aerodynamics import compute_Xv_Zv_My_from_table, AeroRef
-from modules.aerodynamics.aero_tables import AeroTable2D
-
-
-def _clamp(x: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, x))
-
-
-def _wrap_pi(a: float) -> float:
-    return (a + math.pi) % (2.0 * math.pi) - math.pi
-
-
-ALPHA_MAX = math.radians(20.0)  # for table validity/safety
-Q_MAX = 50.0                    # q clamp used ONLY inside aero lookup
-QDOT_MAX = 200.0                # safety clamp to avoid numerical runaway
+from modules.aerodynamics.aero_tables import AeroTable2D, wrap_to_pi
 
 
 def derivatives(
@@ -30,67 +18,55 @@ def derivatives(
     P0: float,
     aero_ref: AeroRef,
     aero_table: AeroTable2D,
+    wind_x: float,
+    wind_z: float,
     lcg: float = 0.0,
 ):
-    # altitude (z positive UP)
-    h = max(0.0, state.z)
 
-    # Atmosphere
-    T, P, rho = isa_atmosphere(h, T0, P0)
+    z = state.z
+    vx = state.vx
+    vz = state.vz
+    theta = state.theta
+    q = state.q
 
-    # Speed / flight path angle (gamma)
-    V = math.hypot(state.vx, state.vz)
-    gamma = math.atan2(state.vz, state.vx)
+    T, P, _rho = isa_atmosphere(z, T0=T0, P0=P0)
+    a = speed_of_sound(T)
 
-    # Wrap theta to avoid drifting
-    theta_use = _wrap_pi(state.theta)
+    vx_rel = vx - wind_x
+    vz_rel = vz - wind_z
 
-    # AoA = theta - gamma
-    alpha = _clamp(theta_use - gamma, -ALPHA_MAX, ALPHA_MAX)
+    V_rel = math.hypot(vx_rel, vz_rel)
+    gamma_rel = math.atan2(vz_rel, vx_rel)
 
-    # Mach for table lookup
-    a = math.sqrt(1.4 * 287.05 * T)
-    Mach = V / a if a > 1e-9 else 0.0
+    # 🔧 FIX: wrap alpha
+    alpha = wrap_to_pi(theta - gamma_rel)
 
-    coeffs = aero_table.lookup(alpha, Mach)
+    mach = (V_rel / a) if a > 0.0 else 0.0
 
-    # IMPORTANT:
-    # Clamp q ONLY for aerodynamic model stability,
-    # but DO NOT use q_use as theta_dot.
-    q_use = _clamp(state.q, -Q_MAX, Q_MAX)
+    coeffs = aero_table.lookup(alpha, mach)
 
-    # Aero forces & moment in Vehicle-Carried/Inertial (XV, ZV, My)
-    Xv, Zv, My, Mach_used, CM_eff = compute_Xv_Zv_My_from_table(
+    Xv, Zv, My, _Mach_used, _CM_eff = compute_Xv_Zv_My_from_table(
         P=P,
         T=T,
-        vx=state.vx,
-        vz=state.vz,
-        q=q_use,
+        vx=vx,
+        vz=vz,
+        wind_x=wind_x,
+        wind_z=wind_z,
         alpha=alpha,
-        CD=coeffs.CD,
-        CL=coeffs.CL,
-        CM0=coeffs.CM0,
-        Cm_alpha=coeffs.Cm_alpha,
-        Cmq=coeffs.Cmq,
+        mach=mach,
+        coeffs=coeffs,
         ref=aero_ref,
-        lcg=lcg
+        q=q,
+        lcg=lcg,
     )
 
-    # Accelerations per the thesis equations:
-    # x_ddot = Xv/m
-    # z_ddot = Zv/m - g
-    # q_dot  = My/Iyy  (and theta_dot = q)
-    ax, az, q_dot = accelerations_3dof_inertial(Xv, Zv, My, mass, Iyy, g)
+    dx = vx
+    dz = vz
 
-    # safety clamp (optional)
-    q_dot = _clamp(q_dot, -QDOT_MAX, QDOT_MAX)
+    dvx = Xv / mass
+    dvz = Zv / mass - g
 
-    # Return derivatives vector:
-    return State3DOF(
-        x=state.vx,
-        z=state.vz,
-        vx=ax,
-        vz=az,
-        theta=state.q,
-        q=q_dot
-    )
+    dtheta = q
+    dq = My / Iyy
+
+    return State3DOF(dx, dz, dvx, dvz, dtheta, dq)
