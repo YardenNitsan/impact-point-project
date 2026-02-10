@@ -81,7 +81,7 @@ def build_test_scenario() -> dict:
         "elevation": 30.0,
         "lat": 32.0853,
         "lon": 34.7818,
-        "mass": 0.6,
+        "mass": 6.0,
         "initialSpeed": 220.0,
     }
 
