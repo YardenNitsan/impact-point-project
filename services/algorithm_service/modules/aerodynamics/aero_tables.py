@@ -1,53 +1,135 @@
-# modules/aerodynamics/aero_tables.py
+"""
+Aerodynamic lookup and simplified coefficient model
+for planar 3DOF flight simulation.
+
+This module provides:
+
+1. A 2D aerodynamic coefficient lookup table with bilinear interpolation.
+2. A simplified Hoerner-style fallback model for cases where
+   measured aerodynamic data is unavailable.
+
+The fallback model approximates lift and drag behavior over a full
+360° angle-of-attack range using trigonometric functions.
+"""
 
 from __future__ import annotations
-from dataclasses import dataclass
-import bisect
+
 import math
+from dataclasses import dataclass
 from typing import Sequence, Tuple
 
-# ============================================================
-# Numerical tolerances
-# ============================================================
-
-INTERPOLATION_EPSILON = 1e-12
 
 # ============================================================
-# Hoerner-style (high AoA / 360°) model parameters
+# Numerical constants
 # ============================================================
-# Hoerner discusses high-angle behavior with lift component ~ k' * sin(a)*cos(a)
-# and typical k'≈2 for very low aspect ratio / A≈0 case. :contentReference[oaicite:2]{index=2}
-HOERNER_K_LIFT = 2.0
 
-# Drag behavior at high AoA is dominated by normal-flow pressure drag,
-# often modeled ~ sin^2(a) (classic plate/bluff-body behavior).
-# We keep this as a parameter (project-dependent).
-DEFAULT_CD_MIN = 0.10     # baseline drag at alpha ~ 0 (you can tune)
-DEFAULT_CD_SIN2_GAIN = 1.20  # magnitude toward 90° (tunable, Hoerner discusses plate-like magnitudes) :contentReference[oaicite:3]{index=3}
-
-# Moment model: without real data, the most defensible “simple” choice
-# is neutral CM0 and user-chosen Cm_alpha, Cmq (already in your pipeline).
-DEFAULT_CM0 = 0.0
-DEFAULT_CM_ALPHA = -0.2
-DEFAULT_CMQ = -8.0
-
-# Angle normalization
-PI = math.pi
-TWO_PI = 2.0 * math.pi
+INTERPOLATION_EPSILON: float = 1e-12
+"""Tolerance used to avoid division-by-zero in interpolation."""
 
 
-def _clamp(x: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, x))
+# ============================================================
+# Simplified aerodynamic model parameters
+# ============================================================
+
+HOERNER_K_LIFT: float = 2.0
+"""Lift gain factor in the simplified Hoerner-style model."""
+
+DEFAULT_CD_MIN: float = 0.10
+"""Baseline drag coefficient near zero angle of attack."""
+
+DEFAULT_CD_SIN2_GAIN: float = 1.20
+"""Drag growth factor at high angle of attack."""
+
+DEFAULT_CM0: float = 0.0
+"""Baseline pitching moment coefficient."""
+
+DEFAULT_CM_ALPHA: float = -0.2
+"""Pitching moment sensitivity to angle of attack."""
+
+DEFAULT_CMQ: float = -8.0
+"""Pitch-rate damping coefficient."""
 
 
-def wrap_to_pi(a: float) -> float:
-    """Wrap angle to (-pi, pi]."""
-    a = (a + PI) % (TWO_PI) - PI
-    return a
+# ============================================================
+# Mathematical constants
+# ============================================================
 
+PI: float = math.pi
+TWO_PI: float = 2.0 * math.pi
+
+
+# ============================================================
+# Utility functions
+# ============================================================
+
+def clamp(value: float, lower: float, upper: float) -> float:
+    """
+    Clamp a scalar value to the inclusive range [lower, upper].
+    """
+    return max(lower, min(upper, value))
+
+
+def wrap_to_pi(angle: float) -> float:
+    """
+    Normalize an angle to the interval (-π, π].
+
+    This ensures consistent angular representation.
+    """
+    return (angle + PI) % TWO_PI - PI
+
+
+def binary_search_right(grid: Sequence[float], x: float) -> int:
+    """
+    Binary search equivalent to bisect.bisect_right.
+
+    Parameters
+    ----------
+    grid : Sequence[float]
+        Sorted ascending grid.
+    x : float
+        Query value.
+
+    Returns
+    -------
+    int
+        Index i such that grid[i-1] <= x < grid[i].
+    """
+    lo = 0
+    hi = len(grid)
+
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if x < grid[mid]:
+            hi = mid
+        else:
+            lo = mid + 1
+
+    return lo
+
+
+# ============================================================
+# Aerodynamic data structures
+# ============================================================
 
 @dataclass(frozen=True)
 class AeroCoeffsTable:
+    """
+    Aerodynamic coefficient container.
+
+    Attributes
+    ----------
+    CD : float
+        Drag coefficient.
+    CL : float
+        Lift coefficient.
+    CM0 : float
+        Baseline pitching moment.
+    Cm_alpha : float
+        Pitching moment slope vs. angle of attack.
+    Cmq : float
+        Pitch-rate damping coefficient.
+    """
+
     CD: float
     CL: float
     CM0: float
@@ -57,19 +139,65 @@ class AeroCoeffsTable:
 
 @dataclass(frozen=True)
 class AeroTable2D:
+    """
+    Two-dimensional aerodynamic lookup table.
+
+    Parameters
+    ----------
+    alpha_grid : Sequence[float]
+        Angle-of-attack grid.
+    mach_grid : Sequence[float]
+        Mach number grid.
+    data : Sequence[Sequence[AeroCoeffsTable]]
+        Coefficient table indexed by (alpha, mach).
+    """
+
     alpha_grid: Sequence[float]
     mach_grid: Sequence[float]
     data: Sequence[Sequence[AeroCoeffsTable]]
 
-    def _idx_pair(self, grid: Sequence[float], x: float) -> Tuple[int, int, float]:
+    # --------------------------------------------------------
+
+    def idx_pair(
+        self,
+        grid: Sequence[float],
+        x: float
+    ) -> Tuple[int, int, float]:
+        """
+        Compute interpolation interval and weight.
+
+        Parameters
+        ----------
+        grid : Sequence[float]
+            Sorted interpolation grid.
+        x : float
+            Query value.
+
+        Returns
+        -------
+        i0 : int
+            Lower index.
+        i1 : int
+            Upper index.
+        t : float
+            Linear interpolation fraction.
+
+        Notation
+        --------
+        g0, g1 : bounding grid values
+        t      : (x - g0) / (g1 - g0)
+        """
+
         if len(grid) < 2:
-            raise ValueError("Grid must have at least 2 points.")
+            raise ValueError("Grid must contain at least two points.")
 
-        x = _clamp(x, grid[0], grid[-1])
+        x = clamp(x, grid[0], grid[-1])
 
-        i1 = bisect.bisect_right(grid, x)
+        i1 = binary_search_right(grid, x)
+
         if i1 <= 0:
             return 0, 1, 0.0
+
         if i1 >= len(grid):
             return len(grid) - 2, len(grid) - 1, 1.0
 
@@ -83,9 +211,21 @@ class AeroTable2D:
         t = (x - g0) / (g1 - g0)
         return i0, i1, t
 
+    # --------------------------------------------------------
+
     def lookup(self, alpha: float, mach: float) -> AeroCoeffsTable:
-        a0, a1, ta = self._idx_pair(self.alpha_grid, alpha)
-        m0, m1, tm = self._idx_pair(self.mach_grid, mach)
+        """
+        Perform bilinear interpolation in the aerodynamic table.
+
+        Notation
+        --------
+        a0, a1 : alpha indices
+        m0, m1 : mach indices
+        ta, tm : interpolation fractions
+        """
+
+        a0, a1, ta = self.idx_pair(self.alpha_grid, alpha)
+        m0, m1, tm = self.idx_pair(self.mach_grid, mach)
 
         c00 = self.data[a0][m0]
         c01 = self.data[a0][m1]
@@ -93,9 +233,11 @@ class AeroTable2D:
         c11 = self.data[a1][m1]
 
         def lerp(u: float, v: float, t: float) -> float:
+            """Linear interpolation."""
             return u + (v - u) * t
 
         def bilinear(f00: float, f01: float, f10: float, f11: float) -> float:
+            """Bilinear interpolation."""
             f0 = lerp(f00, f01, tm)
             f1 = lerp(f10, f11, tm)
             return lerp(f0, f1, ta)
@@ -109,6 +251,10 @@ class AeroTable2D:
         )
 
 
+# ============================================================
+# Simplified Hoerner-style fallback model
+# ============================================================
+
 def hoerner_style_coeffs_360(
     alpha: float,
     *,
@@ -120,12 +266,18 @@ def hoerner_style_coeffs_360(
     cmq: float = DEFAULT_CMQ,
 ) -> AeroCoeffsTable:
     """
-    Simple 360° coefficient model suitable for 3DOF projects:
+    Generate simplified aerodynamic coefficients.
 
-      CL(alpha) ≈ k * sin(alpha) * cos(alpha)         (Hoerner-style high-AoA lift component) :contentReference[oaicite:4]{index=4}
-      CD(alpha) ≈ CDmin + Kd * sin(alpha)^2           (classic bluff/plate-like pressure drag trend)
+    Notation
+    --------
+    a  : wrapped angle of attack
+    sa : sin(a)
+    ca : cos(a)
 
-    This is not CFD; it's the most defensible “simple” model when no real tables exist.
+    Model
+    -----
+    CL = k * sin(a) * cos(a)
+    CD = CD_min + K * sin²(a)
     """
 
     a = wrap_to_pi(alpha)
@@ -157,13 +309,12 @@ def build_hoerner_style_table_360(
     cmq: float = DEFAULT_CMQ,
 ) -> AeroTable2D:
     """
-    Build a full AeroTable2D for (alpha, mach).
-    In this simplified level, coefficients are Mach-independent (reasonable for low subsonic),
-    so the same alpha curve is replicated across mach_grid.
+    Construct a full aerodynamic lookup table from the fallback model.
     """
+
     data = []
+
     for a in alpha_grid:
-        row = []
         coeff = hoerner_style_coeffs_360(
             a,
             cd_min=cd_min,
@@ -173,28 +324,28 @@ def build_hoerner_style_table_360(
             cm_alpha=cm_alpha,
             cmq=cmq,
         )
-        for _m in mach_grid:
-            row.append(coeff)
+
+        row = [coeff for _ in mach_grid]
         data.append(row)
 
-    return AeroTable2D(alpha_grid=list(alpha_grid), mach_grid=list(mach_grid), data=data)
+    return AeroTable2D(
+        alpha_grid=list(alpha_grid),
+        mach_grid=list(mach_grid),
+        data=data,
+    )
 
 
 # ============================================================
-# Default demo table (used by simulated_impact)
+# Default demo configuration
 # ============================================================
 
-# ============================================================
-# Default grids (used by default_demo_table)
-# ============================================================
-
-DEFAULT_ALPHA_GRID = [math.radians(a) for a in range(-180, 181, 5)]  # 5° resolution, full 360°
+DEFAULT_ALPHA_GRID = [math.radians(a) for a in range(-180, 181, 5)]
 DEFAULT_MACH_GRID = [0.0, 0.3, 0.6, 0.9]
 
-def default_demo_table():
-    """Build a default Hoerner-style 360° aerodynamic table.
 
-    Used as a robust fallback/demo aerodynamic model when you don't have CFD/DatCOM tables.
+def default_demo_table() -> AeroTable2D:
+    """
+    Create a default aerodynamic lookup table.
     """
     return build_hoerner_style_table_360(
         alpha_grid=DEFAULT_ALPHA_GRID,

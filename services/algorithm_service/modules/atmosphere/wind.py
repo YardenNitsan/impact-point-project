@@ -1,69 +1,221 @@
-# modules/atmosphere/wind.py
+"""
+Deterministic along-track wind shear model.
+
+This module implements a power-law wind shear profile derived
+from two reference wind measurements (10 m and 100 m). ENU wind
+vectors are projected onto a trajectory-aligned axis and interpolated
+as a function of altitude.
+
+Wind shear model
+----------------
+
+The altitude-dependent wind speed follows a power-law relation:
+
+    V(h) = V_ref (h / h_ref)^α
+
+where:
+
+    h     : altitude
+    V_ref : reference wind speed
+    α     : shear exponent
+
+The implementation is deterministic, numerically stable,
+and designed for 3DOF flight simulation.
+"""
+
+from __future__ import annotations
 
 import math
-import random
-from typing import Optional, Tuple
+from dataclasses import dataclass
+from typing import Tuple
+
 
 # ============================================================
-# Dryden model constants (as used in your reference)
+# Wind profile model constants
 # ============================================================
 
-DRYDEN_A = 0.177
-DRYDEN_B = 0.0027
-DRYDEN_EXP_L = 1.2
-DRYDEN_EXP_SIGMA = 0.4
-DRYDEN_VERTICAL_SCALE = 0.1
+REFERENCE_HEIGHT_LOW_M: float = 10.0
+"""Lower reference measurement height [m]."""
 
-MIN_ALTITUDE = 1.0   # [m]
-MIN_AIRSPEED = 1.0   # [m/s]
+REFERENCE_HEIGHT_HIGH_M: float = 100.0
+"""Upper reference measurement height [m]."""
 
-GAUSS_MEAN = 0.0
-GAUSS_STD = 1.0
-TWO = 2.0
+MIN_VALID_HEIGHT_M: float = 1.0
+"""Minimum altitude used by the wind model [m]."""
+
+MIN_NONZERO_WIND_SPEED_MPS: float = 0.1
+"""Minimum wind magnitude to avoid singularities [m/s]."""
+
+MIN_SHEAR_EXPONENT: float = -1.0
+MAX_SHEAR_EXPONENT: float = 1.0
+"""Physical bounds on the wind shear exponent."""
 
 
-class DrydenWindModel:
-    """Dryden wind turbulence model (discrete-time).
+# ============================================================
+# Metadata container
+# ============================================================
 
-    Produces turbulence components (ut, vt, wt) in [m/s].
+@dataclass(frozen=True)
+class WindProfileMeta:
+    """
+    Diagnostic metadata describing the wind profile.
 
-    Important: The stochastic (noise) term scales with sqrt(dt),
-    not dt. The continuous-time form:
-        d u = -(Va/Lu) u dt + sigma_u * sqrt(2 Va/Lu) dW
-    Discretized with Euler-Maruyama:
-        u_{k+1} = u_k + (-(Va/Lu) u_k) dt + sigma_u * sqrt(2 Va/Lu * dt) * N(0,1)
+    Attributes
+    ----------
+    wind_along_track_10m_mps : float
+        Along-track wind at 10 m
+    wind_along_track_100m_mps : float
+        Along-track wind at 100 m
+    shear_exponent : float
+        Estimated power-law shear exponent
     """
 
-    def __init__(self, Vw_ground: float, seed: Optional[int] = None):
-        self.Vw_ground = float(Vw_ground)
-        self._rng = random.Random(seed)
+    wind_along_track_10m_mps: float
+    wind_along_track_100m_mps: float
+    shear_exponent: float
 
-        self.ut = 0.0
-        self.vt = 0.0
-        self.wt = 0.0
 
-    def step(self, z: float, Va: float, dt: float) -> Tuple[float, float]:
-        h = max(float(z), MIN_ALTITUDE)
-        base = DRYDEN_A + DRYDEN_B * h
+# ============================================================
+# Along-track wind shear model
+# ============================================================
 
-        Lu = h / (base ** DRYDEN_EXP_L)
-        Lv = Lu
-        Lw = h
+class AlongTrackShearWind:
+    """
+    Deterministic altitude-dependent wind model.
 
-        sigma_u = self.Vw_ground / (base ** DRYDEN_EXP_SIGMA)
-        sigma_v = sigma_u
-        sigma_w = DRYDEN_VERTICAL_SCALE * self.Vw_ground
+    ENU wind vectors are projected onto the trajectory axis
+    defined by azimuth angle:
 
-        eta_u = self._rng.gauss(GAUSS_MEAN, GAUSS_STD)
-        eta_v = self._rng.gauss(GAUSS_MEAN, GAUSS_STD)
-        eta_w = self._rng.gauss(GAUSS_MEAN, GAUSS_STD)
+        V_track = V_east sin(ψ) + V_north cos(ψ)
 
-        Va_eff = max(float(Va), MIN_AIRSPEED)
-        dt_eff = max(float(dt), 1e-6)
+    where ψ is the trajectory azimuth.
 
-        # Euler-Maruyama update (correct sqrt(dt) scaling)
-        self.ut += (-Va_eff * self.ut / Lu) * dt_eff + sigma_u * math.sqrt(TWO * Va_eff / Lu * dt_eff) * eta_u
-        self.vt += (-Va_eff * self.vt / Lv) * dt_eff + sigma_v * math.sqrt(TWO * Va_eff / Lv * dt_eff) * eta_v
-        self.wt += (-Va_eff * self.wt / Lw) * dt_eff + sigma_w * math.sqrt(TWO * Va_eff / Lw * dt_eff) * eta_w
+    A power-law shear model is then applied to compute
+    altitude-dependent wind.
+    """
 
-        return self.ut, self.wt
+    def __init__(
+        self,
+        *,
+        azimuth_rad: float,
+        wind_east_10m_mps: float,
+        wind_north_10m_mps: float,
+        wind_east_100m_mps: float,
+        wind_north_100m_mps: float,
+    ) -> None:
+
+        self.azimuth_rad = float(azimuth_rad)
+
+        self._wind_along_10m_mps = self._project_to_track(
+            wind_east_10m_mps,
+            wind_north_10m_mps,
+        )
+
+        self._wind_along_100m_mps = self._project_to_track(
+            wind_east_100m_mps,
+            wind_north_100m_mps,
+        )
+
+        self._shear_exponent = self._compute_shear_exponent(
+            self._wind_along_10m_mps,
+            self._wind_along_100m_mps,
+        )
+
+    # --------------------------------------------------------
+    # Internal helpers
+    # --------------------------------------------------------
+
+    @staticmethod
+    def _compute_shear_exponent(
+        wind_10m_mps: float,
+        wind_100m_mps: float,
+    ) -> float:
+        """
+        Estimate the power-law wind shear exponent α.
+        """
+
+        v10 = max(abs(wind_10m_mps), MIN_NONZERO_WIND_SPEED_MPS)
+        v100 = max(abs(wind_100m_mps), MIN_NONZERO_WIND_SPEED_MPS)
+
+        height_ratio = (
+            REFERENCE_HEIGHT_HIGH_M
+            / REFERENCE_HEIGHT_LOW_M
+        )
+
+        alpha = (
+            math.log(v100 / v10)
+            / math.log(height_ratio)
+        )
+
+        return max(
+            MIN_SHEAR_EXPONENT,
+            min(MAX_SHEAR_EXPONENT, alpha),
+        )
+
+    # --------------------------------------------------------
+
+    def _project_to_track(
+        self,
+        wind_east_mps: float,
+        wind_north_mps: float,
+    ) -> float:
+        """
+        Project ENU wind vector onto trajectory axis.
+        """
+
+        unit_e = math.sin(self.azimuth_rad)
+        unit_n = math.cos(self.azimuth_rad)
+
+        return (
+            float(wind_east_mps) * unit_e
+            + float(wind_north_mps) * unit_n
+        )
+
+    # --------------------------------------------------------
+    # Public interface
+    # --------------------------------------------------------
+
+    def wind_at_height(
+        self,
+        altitude_m: float,
+    ) -> Tuple[float, float]:
+        """
+        Compute wind at a given altitude.
+
+        Returns
+        -------
+        wind_x : float
+            Along-track wind [m/s]
+        wind_z : float
+            Vertical wind (zero in this model)
+        """
+
+        h = max(float(altitude_m), MIN_VALID_HEIGHT_M)
+
+        sign = 1.0 if self._wind_along_10m_mps >= 0.0 else -1.0
+
+        base = max(
+            abs(self._wind_along_10m_mps),
+            MIN_NONZERO_WIND_SPEED_MPS,
+        )
+
+        wind_track = (
+            sign
+            * base
+            * (h / REFERENCE_HEIGHT_LOW_M) ** self._shear_exponent
+        )
+
+        return wind_track, 0.0
+
+    # --------------------------------------------------------
+
+    def meta(self) -> WindProfileMeta:
+        """
+        Return diagnostic wind profile metadata.
+        """
+
+        return WindProfileMeta(
+            wind_along_track_10m_mps=self._wind_along_10m_mps,
+            wind_along_track_100m_mps=self._wind_along_100m_mps,
+            shear_exponent=self._shear_exponent,
+        )

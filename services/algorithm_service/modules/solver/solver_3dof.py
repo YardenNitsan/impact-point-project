@@ -1,72 +1,203 @@
-# modules/solver/solver_3dof.py
+from __future__ import annotations
+
+"""
+Planar 3DOF rigid-body flight dynamics model.
+
+This module implements the continuous-time equations of motion for a
+projectile / vehicle in a vertical plane with aerodynamic forces and pitch dynamics.
+
+Mathematical model
+------------------
+
+Translational dynamics:
+
+    m * dv/dt = F_aero + F_gravity
+
+where:
+
+    v = (vx, vz)   inertial velocity vector
+    F_aero         aerodynamic force vector
+    F_gravity      = (0, -m g)
+
+Rotational dynamics (pitch):
+
+    Iyy * dq/dt = My
+
+    dθ/dt = q
+
+Coordinate frame
+----------------
+
+x-axis : downrange inertial axis [m]
+z-axis : altitude above ground (positive upward) [m]
+
+State vector:
+
+    x     : downrange position [m]
+    z     : altitude [m]
+    vx    : inertial x velocity [m/s]
+    vz    : inertial z velocity [m/s]
+    theta : pitch angle [rad]
+    q     : pitch rate [rad/s]
+
+Aerodynamic model
+-----------------
+
+Aerodynamic forces are computed from lookup tables as a function of:
+
+    alpha : angle of attack [rad]
+    M     : Mach number [-]
+
+using atmospheric properties from ISA.
+
+Assumptions
+-----------
+
+• Flat Earth
+• No Coriolis
+• Point-mass translation + pitch DOF
+• ISA atmosphere
+• Aerodynamic coefficients from tabulated data
+"""
 
 import math
 
-from modules.state.state import State3DOF
+from modules.state.state import State3DOF, StateDerivatives3DOF
 from modules.atmosphere.isa import isa_atmosphere, speed_of_sound
 from modules.aerodynamics.aerodynamics import compute_Xv_Zv_My_from_table, AeroRef
 from modules.aerodynamics.aero_tables import AeroTable2D, wrap_to_pi
 
 
+# ============================================================
+# Numerical safety constants
+# ============================================================
+
+MIN_SPEED_OF_SOUND_MPS: float = 1e-6
+"""Lower bound to avoid division by zero in Mach computation."""
+
+
+# ============================================================
+# Public API
+# ============================================================
+
 def derivatives(
     state: State3DOF,
     *,
-    mass: float,
-    Iyy: float,
-    g: float,
-    T0: float,
-    P0: float,
-    aero_ref: AeroRef,
+    mass_kg: float,
+    pitch_inertia_kg_m2: float,
+    gravity_mps2: float,
+    sea_level_temperature_K: float,
+    sea_level_pressure_Pa: float,
+    aero_reference: AeroRef,
     aero_table: AeroTable2D,
-    wind_x: float,
-    wind_z: float,
-    lcg: float = 0.0,
-):
+    wind_x_mps: float,
+    wind_z_mps: float,
+    center_of_gravity_offset_m: float = 0.0,
+) -> StateDerivatives3DOF:
+    """
+    Compute time derivatives of the 3DOF state.
 
-    z = state.z
-    vx = state.vx
-    vz = state.vz
-    theta = state.theta
-    q = state.q
+    Parameters
+    ----------
+    state:
+        Current 3DOF state.
+    mass_kg:
+        Vehicle mass [kg].
+    pitch_inertia_kg_m2:
+        Pitch moment of inertia Iyy [kg·m²].
+    gravity_mps2:
+        Gravitational acceleration [m/s²].
+    sea_level_temperature_K:
+        Reference ISA sea-level temperature [K].
+    sea_level_pressure_Pa:
+        Reference ISA sea-level pressure [Pa].
+    aero_reference:
+        Aerodynamic reference geometry.
+    aero_table:
+        2D aerodynamic lookup table (alpha, Mach).
+    wind_x_mps, wind_z_mps:
+        Wind components in inertial frame [m/s].
+    center_of_gravity_offset_m:
+        CG offset parameter used by the aero model.
 
-    T, P, _rho = isa_atmosphere(z, T0=T0, P0=P0)
-    a = speed_of_sound(T)
+    Returns
+    -------
+    StateDerivatives3DOF
+        Time derivatives of the state.
+    """
 
-    vx_rel = vx - wind_x
-    vz_rel = vz - wind_z
+    # ========================================================
+    # State unpacking
+    # ========================================================
 
-    V_rel = math.hypot(vx_rel, vz_rel)
-    gamma_rel = math.atan2(vz_rel, vx_rel)
+    altitude_m = state.z
+    vx_inertial = state.vx
+    vz_inertial = state.vz
+    theta_rad = state.theta
+    pitch_rate_radps = state.q
 
-    # 🔧 FIX: wrap alpha
-    alpha = wrap_to_pi(theta - gamma_rel)
+    # ========================================================
+    # Atmosphere model (ISA)
+    # ========================================================
 
-    mach = (V_rel / a) if a > 0.0 else 0.0
-
-    coeffs = aero_table.lookup(alpha, mach)
-
-    Xv, Zv, My, _Mach_used, _CM_eff = compute_Xv_Zv_My_from_table(
-        P=P,
-        T=T,
-        vx=vx,
-        vz=vz,
-        wind_x=wind_x,
-        wind_z=wind_z,
-        alpha=alpha,
-        mach=mach,
-        coeffs=coeffs,
-        ref=aero_ref,
-        q=q,
-        lcg=lcg,
+    temperature_K, pressure_Pa, _density = isa_atmosphere(
+        altitude_m,
+        sea_level_temperature_K,
+        sea_level_pressure_Pa,
     )
 
-    dx = vx
-    dz = vz
+    a_sound = max(speed_of_sound(temperature_K), MIN_SPEED_OF_SOUND_MPS)
 
-    dvx = Xv / mass
-    dvz = Zv / mass - g
+    # ========================================================
+    # Relative airflow
+    # ========================================================
 
-    dtheta = q
-    dq = My / Iyy
+    vx_rel = vx_inertial - wind_x_mps
+    vz_rel = vz_inertial - wind_z_mps
 
-    return State3DOF(dx, dz, dvx, dvz, dtheta, dq)
+    airspeed_mps = math.hypot(vx_rel, vz_rel)
+    flight_path_angle_rad = math.atan2(vz_rel, vx_rel)
+
+    alpha_rad = wrap_to_pi(theta_rad - flight_path_angle_rad)
+    mach_number = airspeed_mps / a_sound
+
+    # ========================================================
+    # Aerodynamic forces & moments
+    # ========================================================
+
+    coeffs = aero_table.lookup(alpha_rad, mach_number)
+
+    if altitude_m < 200.0:  # כדי לא להציף את הטרמינל יותר מדי
+        print(f"alpha={alpha_rad:+.3f} rad, Mach={mach_number:.2f}, coeffs={coeffs}")
+
+    force_x_N, force_z_N, moment_y_Nm, _, _ = compute_Xv_Zv_My_from_table(
+        P=pressure_Pa,
+        T=temperature_K,
+        vx=vx_inertial,
+        vz=vz_inertial,
+        wind_x=wind_x_mps,
+        wind_z=wind_z_mps,
+        alpha=alpha_rad,
+        mach=mach_number,
+        coeffs=coeffs,
+        ref=aero_reference,
+        q=pitch_rate_radps,
+        lcg=center_of_gravity_offset_m,
+    )
+
+    # ========================================================
+    # Equations of motion
+    # ========================================================
+
+    ax = force_x_N / mass_kg
+    az = (force_z_N / mass_kg) - gravity_mps2
+    q_dot = moment_y_Nm / pitch_inertia_kg_m2
+
+    return StateDerivatives3DOF(
+        x=vx_inertial,
+        z=vz_inertial,
+        vx=ax,
+        vz=az,
+        theta=pitch_rate_radps,
+        q=q_dot,
+    )
