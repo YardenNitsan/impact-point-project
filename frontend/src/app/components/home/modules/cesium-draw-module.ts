@@ -13,9 +13,9 @@ import {
   VelocityOrientationProperty,
   Viewer,
   sampleTerrainMostDetailed,
-} from "cesium";
+} from 'cesium';
 
-import { Coordinate } from "../../services/shared.service";
+import { Coordinate } from '../../models/coordinate.model';
 
 /* =========================
    Performance constants
@@ -35,13 +35,13 @@ const MAX_ANIMATION_SAMPLES = 2500;
 const DEFAULT_ANIMATION_DURATION_SECONDS = 20;
 
 // LOD thresholds (meters)
-const LOD_HEIGHT_MEDIUM = 50_000;
-const LOD_HEIGHT_FAR = 200_000;
+const CAMERA_HEIGHT_LOD_MEDIUM_METERS = 50_000;
+const CAMERA_HEIGHT_LOD_FAR_METERS = 200_000;
 
 // Polyline max points by LOD
-const LOD_POINTS_NEAR = 2500;
-const LOD_POINTS_MEDIUM = 2000;
-const LOD_POINTS_FAR = 700;
+const MAX_POLYLINE_POINTS_LOD_NEAR = 2500;
+const MAX_POLYLINE_POINTS_LOD_MEDIUM = 2000;
+const MAX_POLYLINE_POINTS_LOD_FAR = 700;
 
 // Polyline width by LOD
 const POLYLINE_WIDTH_NEAR = 4;
@@ -108,48 +108,59 @@ function altitudeWithOffsetMeters(alt: number) {
 }
 
 function buildTrajectoryKey(points: Coordinate[]): string {
-  const n = points.length;
-  if (n === 0) return "empty";
+  const totalPoints = points.length;
+  if (totalPoints === 0) return 'empty';
 
   const a = points[0];
-  const b = points[Math.floor(n / 2)];
-  const c = points[n - 1];
+  const b = points[Math.floor(totalPoints / 2)];
+  const c = points[totalPoints - 1];
 
   const pack = (p: Coordinate) =>
     `${p.lon.toFixed(6)}|${p.lat.toFixed(6)}|${(p.alt ?? 0).toFixed(2)}`;
 
-  return `${n}::${pack(a)}::${pack(b)}::${pack(c)}`;
+  return `${totalPoints}::${pack(a)}::${pack(b)}::${pack(c)}`;
 }
 
 function getLODMaxPoints(viewer: Viewer): number {
   const h = viewer.camera.positionCartographic.height;
-  if (h > LOD_HEIGHT_FAR) return LOD_POINTS_FAR;
-  if (h > LOD_HEIGHT_MEDIUM) return LOD_POINTS_MEDIUM;
-  return LOD_POINTS_NEAR;
+  if (h > CAMERA_HEIGHT_LOD_FAR_METERS) return MAX_POLYLINE_POINTS_LOD_FAR;
+  if (h > CAMERA_HEIGHT_LOD_MEDIUM_METERS)
+    return MAX_POLYLINE_POINTS_LOD_MEDIUM;
+  return MAX_POLYLINE_POINTS_LOD_NEAR;
 }
 
 function getLODWidth(viewer: Viewer): number {
   const h = viewer.camera.positionCartographic.height;
-  if (h > LOD_HEIGHT_FAR) return POLYLINE_WIDTH_FAR;
-  if (h > LOD_HEIGHT_MEDIUM) return POLYLINE_WIDTH_MEDIUM;
+  if (h > CAMERA_HEIGHT_LOD_FAR_METERS) return POLYLINE_WIDTH_FAR;
+  if (h > CAMERA_HEIGHT_LOD_MEDIUM_METERS) return POLYLINE_WIDTH_MEDIUM;
   return POLYLINE_WIDTH_NEAR;
 }
 
-function fillDownsampled(out: Cartesian3[], full: Cartesian3[], maxPoints: number) {
-  out.length = 0;
+function fillDownsampled(
+  downsampledPositions: Cartesian3[],
+  fullPositions: Cartesian3[],
+  maxAllowedPoints: number,
+) {
+  downsampledPositions.length = 0;
 
-  const n = full.length;
-  if (n === 0) return;
+  const totalFullPoints = fullPositions.length;
+  if (totalFullPoints === 0) return;
 
-  if (n <= maxPoints) {
-    for (let i = 0; i < n; i++) out.push(full[i]);
+  if (totalFullPoints <= maxAllowedPoints) {
+    for (let i = 0; i < totalFullPoints; i++)
+      downsampledPositions.push(fullPositions[i]);
     return;
   }
 
-  const step = Math.max(1, Math.ceil(n / maxPoints));
+  const step = Math.max(1, Math.ceil(totalFullPoints / maxAllowedPoints));
 
-  for (let i = 0; i < n; i += step) out.push(full[i]);
-  if (out[out.length - 1] !== full[n - 1]) out.push(full[n - 1]);
+  for (let i = 0; i < totalFullPoints; i += step)
+    downsampledPositions.push(fullPositions[i]);
+  if (
+    downsampledPositions[downsampledPositions.length - 1] !==
+    fullPositions[totalFullPoints - 1]
+  )
+    downsampledPositions.push(fullPositions[totalFullPoints - 1]);
 }
 
 function normalizeDurationSeconds(durationSeconds: number): number {
@@ -166,76 +177,89 @@ function normalizeDurationSeconds(durationSeconds: number): number {
 async function sampleTerrainFastCached(
   viewer: Viewer,
   points: Coordinate[],
-  key: string
+  key: string,
 ): Promise<number[]> {
   const cached = terrainCacheGet(key);
   if (cached && cached.length === points.length) return cached;
 
-  const n = points.length;
-  const heights = new Array<number>(n).fill(0);
+  const totalPoints = points.length;
+  const terrainHeightsMeters = new Array<number>(totalPoints).fill(0);
 
-  if (n === 0) {
-    terrainCacheSet(key, heights);
-    return heights;
+  if (totalPoints === 0) {
+    terrainCacheSet(key, terrainHeightsMeters);
+    return terrainHeightsMeters;
   }
 
-  const sampleStep = Math.max(1, Math.ceil(n / MAX_TERRAIN_SAMPLES));
+  const sampleStep = Math.max(1, Math.ceil(totalPoints / MAX_TERRAIN_SAMPLES));
 
-  const indices: number[] = [];
-  const cartos: Cartographic[] = [];
+  const sampledPointIndices: number[] = [];
+  const sampledCartographicPositions: Cartographic[] = [];
 
-  for (let i = 0; i < n; i += sampleStep) {
-    indices.push(i);
+  for (let i = 0; i < totalPoints; i += sampleStep) {
+    sampledPointIndices.push(i);
     const p = points[i];
-    cartos.push(Cartographic.fromDegrees(p.lon, p.lat));
+    sampledCartographicPositions.push(Cartographic.fromDegrees(p.lon, p.lat));
   }
 
-  if (indices[indices.length - 1] !== n - 1) {
-    indices.push(n - 1);
-    const p = points[n - 1];
-    cartos.push(Cartographic.fromDegrees(p.lon, p.lat));
+  if (sampledPointIndices[sampledPointIndices.length - 1] !== totalPoints - 1) {
+    sampledPointIndices.push(totalPoints - 1);
+    const p = points[totalPoints - 1];
+    sampledCartographicPositions.push(Cartographic.fromDegrees(p.lon, p.lat));
   }
 
-  let updated: Cartographic[];
+  let sampledTerrainResults: Cartographic[];
   try {
-    updated = await sampleTerrainMostDetailed(viewer.terrainProvider, cartos);
+    sampledTerrainResults = await sampleTerrainMostDetailed(
+      viewer.terrainProvider,
+      sampledCartographicPositions,
+    );
   } catch {
-    terrainCacheSet(key, heights);
-    return heights;
+    terrainCacheSet(key, terrainHeightsMeters);
+    return terrainHeightsMeters;
   }
 
-  for (let i = 0; i < indices.length; i++) {
-    const h = updated[i]?.height;
-    heights[indices[i]] = Number.isFinite(h) ? (h as number) : 0;
+  for (let i = 0; i < sampledPointIndices.length; i++) {
+    const h = sampledTerrainResults[i]?.height;
+    terrainHeightsMeters[sampledPointIndices[i]] = Number.isFinite(h)
+      ? (h as number)
+      : 0;
   }
 
   // interpolate between sampled points
-  for (let s = 0; s < indices.length - 1; s++) {
-    const a = indices[s];
-    const b = indices[s + 1];
+  for (let s = 0; s < sampledPointIndices.length - 1; s++) {
+    const a = sampledPointIndices[s];
+    const b = sampledPointIndices[s + 1];
 
-    const ha = heights[a];
-    const hb = heights[b];
+    const ha = terrainHeightsMeters[a];
+    const hb = terrainHeightsMeters[b];
 
     const span = b - a;
     if (span <= 1) continue;
 
     for (let i = a + 1; i < b; i++) {
       const t = (i - a) / span;
-      heights[i] = ha + (hb - ha) * t;
+      terrainHeightsMeters[i] = ha + (hb - ha) * t;
     }
   }
 
-  terrainCacheSet(key, heights);
-  return heights;
+  terrainCacheSet(key, terrainHeightsMeters);
+  return terrainHeightsMeters;
 }
 
 /* =========================
    LOD update
    ========================= */
 
-export function updateTrajectoryLOD(viewer: Viewer, handles: TrajectoryLODHandles) {
-  if (!handles.fullPositions || !handles.polylinePositions || !handles.polylineEntity) return;
+export function updateTrajectoryLOD(
+  viewer: Viewer,
+  handles: TrajectoryLODHandles,
+) {
+  if (
+    !handles.fullPositions ||
+    !handles.polylinePositions ||
+    !handles.polylineEntity
+  )
+    return;
 
   const maxPoints = getLODMaxPoints(viewer);
   const width = getLODWidth(viewer);
@@ -254,16 +278,16 @@ export async function drawTrajectoryLOD(
   viewer: Viewer,
   rawPoints: Coordinate[],
   handles: TrajectoryLODHandles,
-  durationSeconds: number
+  durationSeconds: number,
 ): Promise<TrajectoryLODHandles> {
   if (!viewer || rawPoints.length === 0) return handles;
 
   handles.rawPoints = rawPoints;
 
-  const key = buildTrajectoryKey(rawPoints);
+  const trajectoryCacheKey = buildTrajectoryKey(rawPoints);
   const safeDuration = normalizeDurationSeconds(durationSeconds);
 
-  const sameTrajectory = handles.lastKey === key;
+  const sameTrajectory = handles.lastKey === trajectoryCacheKey;
   const sameDuration = handles.lastDurationSeconds === safeDuration;
 
   if (sameTrajectory && sameDuration && handles.fullPositions) {
@@ -271,24 +295,33 @@ export async function drawTrajectoryLOD(
     return handles;
   }
 
-  handles.lastKey = key;
+  handles.lastKey = trajectoryCacheKey;
   handles.lastDurationSeconds = safeDuration;
 
   // terrain
-  const terrain = await sampleTerrainFastCached(viewer, rawPoints, key);
+  const terrainHeightsMeters = await sampleTerrainFastCached(
+    viewer,
+    rawPoints,
+    trajectoryCacheKey,
+  );
 
   // full positions
-  const full = new Array<Cartesian3>(rawPoints.length);
+  const fullTrajectoryPositions = new Array<Cartesian3>(rawPoints.length);
   for (let i = 0; i < rawPoints.length; i++) {
     const p = rawPoints[i];
-    const h = altitudeWithOffsetMeters(p.alt) + (terrain[i] ?? 0);
-    full[i] = Cartesian3.fromDegrees(p.lon, p.lat, Number.isFinite(h) ? h : 0);
+    const h = altitudeWithOffsetMeters(p.alt) + (terrainHeightsMeters[i] ?? 0);
+    fullTrajectoryPositions[i] = Cartesian3.fromDegrees(
+      p.lon,
+      p.lat,
+      Number.isFinite(h) ? h : 0,
+    );
   }
-  handles.fullPositions = full;
+  handles.fullPositions = fullTrajectoryPositions;
 
   // polyline reusable (CallbackProperty for positions + width)
   if (!handles.polylinePositions) handles.polylinePositions = [];
-  if (handles.polylineWidth === undefined) handles.polylineWidth = POLYLINE_WIDTH_NEAR;
+  if (handles.polylineWidth === undefined)
+    handles.polylineWidth = POLYLINE_WIDTH_NEAR;
 
   if (!handles.polylinePositionsCallback) {
     handles.polylinePositionsCallback = new CallbackProperty(() => {
@@ -325,20 +358,37 @@ export async function drawTrajectoryLOD(
   handles.movingProperty.forwardExtrapolationType = ExtrapolationType.HOLD;
   handles.movingProperty.backwardExtrapolationType = ExtrapolationType.HOLD;
 
-  const n = full.length;
-  const step = Math.max(1, Math.ceil(n / MAX_ANIMATION_SAMPLES));
+  const totalTrajectoryPoints = fullTrajectoryPositions.length;
+  const animationSampleStride = Math.max(
+    1,
+    Math.ceil(totalTrajectoryPoints / MAX_ANIMATION_SAMPLES),
+  );
 
-  const start = JulianDate.now();
-  const dt = safeDuration / Math.max(1, n - 1);
+  const animationStartTime = JulianDate.now();
+  if (totalTrajectoryPoints < 2) return handles;
 
-  for (let i = 0; i < n; i += step) {
-    const t = JulianDate.addSeconds(start, i * dt, new JulianDate());
-    handles.movingProperty.addSample(t, full[i]);
+  const secondsPerSample =
+    safeDuration / Math.max(1, totalTrajectoryPoints - 1);
+
+  for (let i = 0; i < totalTrajectoryPoints; i += animationSampleStride) {
+    const t = JulianDate.addSeconds(
+      animationStartTime,
+      i * secondsPerSample,
+      new JulianDate(),
+    );
+    handles.movingProperty.addSample(t, fullTrajectoryPositions[i]);
   }
 
-  if ((n - 1) % step !== 0) {
-    const t = JulianDate.addSeconds(start, (n - 1) * dt, new JulianDate());
-    handles.movingProperty.addSample(t, full[n - 1]);
+  if ((totalTrajectoryPoints - 1) % animationSampleStride !== 0) {
+    const t = JulianDate.addSeconds(
+      animationStartTime,
+      (totalTrajectoryPoints - 1) * secondsPerSample,
+      new JulianDate(),
+    );
+    handles.movingProperty.addSample(
+      t,
+      fullTrajectoryPositions[totalTrajectoryPoints - 1],
+    );
   }
 
   if (!handles.movingEntity) {
@@ -354,7 +404,9 @@ export async function drawTrajectoryLOD(
     });
   } else {
     handles.movingEntity.position = handles.movingProperty;
-    handles.movingEntity.orientation = new VelocityOrientationProperty(handles.movingProperty);
+    handles.movingEntity.orientation = new VelocityOrientationProperty(
+      handles.movingProperty,
+    );
   }
 
   viewer.clock.shouldAnimate = true;

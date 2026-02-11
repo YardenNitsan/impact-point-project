@@ -3,47 +3,59 @@ import {
   EventEmitter,
   Input,
   OnChanges,
-  OnInit,
+  OnDestroy,
   Output,
-  SimpleChanges
+  SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   SimulationDetailsService,
-  SimulationDetails
+  SimulationDetails,
 } from './details-services/simulationDetails.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-details',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './details.component.html',
-  styleUrl: './details.component.css'
+  styleUrl: './details.component.css',
 })
-
-export class DetailsComponent implements OnInit {
-
+export class DetailsComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) simulationId!: string;
   @Output() back = new EventEmitter<void>();
 
   formattedDuration = '';
   details!: SimulationDetails;
   loading = true;
+  private subscription?: Subscription;
 
   constructor(private detailsService: SimulationDetailsService) {}
 
-  ngOnInit(): void {
-    this.detailsService.getDetails(this.simulationId).subscribe({
-      next: (data) => {
-        this.formattedDuration = this.formatTime(data.durationSeconds);
-        this.details = data;
-        this.loading = false;
-      },
-      error: () => {
-        alert('Failed to load simulation details');
-        this.loading = false;
-      }
-    });
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['simulationId'] && this.simulationId) {
+      this.loadDetails();
+    }
+  }
+
+  private loadDetails() {
+    this.loading = true;
+
+    this.subscription?.unsubscribe();
+
+    this.subscription = this.detailsService
+      .getDetails(this.simulationId)
+      .subscribe({
+        next: (data) => {
+          this.formattedDuration = this.formatTime(data.durationSeconds);
+          this.details = data;
+          this.loading = false;
+        },
+        error: () => {
+          alert('Failed to load simulation details');
+          this.loading = false;
+        },
+      });
   }
 
   private formatTime(seconds: number): string {
@@ -53,5 +65,7 @@ export class DetailsComponent implements OnInit {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+  ngOnDestroy(): void {
+    this.subscription?.unsubscribe();
+  }
 }
-

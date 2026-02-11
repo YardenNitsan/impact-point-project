@@ -1,48 +1,44 @@
 <div class="tool-panel">
   <form [formGroup]="trajectoryForm" (ngSubmit)="submit()">
-
     <h2 class="form-title">New Simulation</h2>
 
     <div class="form-grid">
       <div class="row">
         <label>Altitude</label>
-        <input type="number" formControlName="alt" placeholder="Meters">
+        <input type="number" formControlName="alt" placeholder="Meters" />
       </div>
 
       <div class="row">
         <label>Azimuth (°)</label>
-        <input type="number" formControlName="azimuth" placeholder="0–360">
+        <input type="number" formControlName="azimuth" placeholder="0–360" />
       </div>
 
       <div class="row">
         <label>Elevation (°)</label>
-        <input type="number" formControlName="elevation" placeholder="0–90">
+        <input type="number" formControlName="elevation" placeholder="0–90" />
       </div>
 
       <div class="row">
         <label>Latitude</label>
-        <input type="number" formControlName="lat" placeholder="00.00">
+        <input type="number" formControlName="lat" placeholder="00.00" />
       </div>
 
       <div class="row">
         <label>Longitude</label>
-        <input type="number" formControlName="lon" placeholder="00.00">
+        <input type="number" formControlName="lon" placeholder="00.00" />
       </div>
 
       <div class="row">
         <label>Mass (kg)</label>
-        <input type="number" formControlName="mass" placeholder="kg">
+        <input type="number" formControlName="mass" placeholder="kg" />
       </div>
 
       <div class="row">
         <label>Initial Speed (m/s)</label>
-        <input type="number" formControlName="speed" placeholder="m/s">
+        <input type="number" formControlName="speed" placeholder="m/s" />
       </div>
     </div>
 
-    <button type="submit" class="send-btn">
-      Create Simulation
-    </button>
-
+    <button type="submit" class="send-btn">Create Simulation</button>
   </form>
 </div>

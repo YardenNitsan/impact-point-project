@@ -1,47 +1,41 @@
-import {
-  Directive,
-  ElementRef,
-  AfterViewInit,
-  OnDestroy
-} from "@angular/core";
+import { Directive, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 
 import {
   Ion,
   Viewer,
   createWorldTerrainAsync,
   createOsmBuildingsAsync,
-  Cesium3DTileset
-} from "cesium";
+  Cesium3DTileset,
+} from 'cesium';
 
-import { CesiumManager } from "./modules/cesium-manager-module";
-import { environment } from "../../../../environment";
+import { CesiumManager } from './modules/cesium-manager-module';
+import { environment } from '../../../../environment';
 
 /* =========================
    Buildings tuning
    ========================= */
 
-// בניינים מופיעים רק כשקרובים
+// minimum distance for appearing buildings
 const BUILDINGS_ENABLE_HEIGHT = 8000;
 
-// מעל זה → נכבים
+// maximum distance for appearing buildings
 const BUILDINGS_DISABLE_HEIGHT = 15000;
 
-// איכות הבניינים (גבוה = פחות עומס)
+// building's quality, lower is better performance
 const BUILDINGS_MAX_SSE = 192;
 
 @Directive({
-  selector: "[appCesium]",
+  selector: '[appCesium]',
 })
-export class CesiumDirective
-  implements AfterViewInit, OnDestroy
-{
+export class CesiumDirective implements AfterViewInit, OnDestroy {
   private viewer?: Viewer;
   private resizeObserver?: ResizeObserver;
   private buildings?: Cesium3DTileset;
+  private cameraMoveEndHandler?: () => void;
 
   constructor(
     private el: ElementRef<HTMLElement>,
-    private manager: CesiumManager
+    private manager: CesiumManager,
   ) {}
 
   async ngAfterViewInit() {
@@ -54,42 +48,36 @@ export class CesiumDirective
       maximumRenderTimeChange: Infinity,
     });
 
-    this.viewer.terrainProvider =
-      await createWorldTerrainAsync();
+    this.viewer.terrainProvider = await createWorldTerrainAsync();
 
-    // 🔥 טוען בניינים פעם אחת בלבד
     this.buildings = await createOsmBuildingsAsync();
-    this.buildings.maximumScreenSpaceError =
-      BUILDINGS_MAX_SSE;
+    this.buildings.maximumScreenSpaceError = BUILDINGS_MAX_SSE;
 
-    this.buildings.show = false; // מתחיל כבוי
+    this.buildings.show = false;
     this.viewer.scene.primitives.add(this.buildings);
 
-    // 🔥 מערכת הפעלה חכמה לבניינים
-    this.viewer.camera.moveEnd.addEventListener(() => {
+    this.cameraMoveEndHandler = () => {
       if (!this.viewer || !this.buildings) return;
 
-      const h =
-        this.viewer.camera.positionCartographic.height;
+      const cameraHeightMeters = this.viewer.camera.positionCartographic.height;
 
-      if (h < BUILDINGS_ENABLE_HEIGHT) {
+      if (cameraHeightMeters < BUILDINGS_ENABLE_HEIGHT) {
         this.buildings.show = true;
       }
 
-      if (h > BUILDINGS_DISABLE_HEIGHT) {
+      if (cameraHeightMeters > BUILDINGS_DISABLE_HEIGHT) {
         this.buildings.show = false;
       }
 
       this.viewer.scene.requestRender();
-    });
+    };
 
-    // manager
-    this.manager.setViewer(this.viewer);
+    this.viewer.camera.moveEnd.addEventListener(this.cameraMoveEndHandler);
 
-    // resize handling
+    this.manager.initializeViewer(this.viewer);
+
     this.resizeObserver = new ResizeObserver(() => {
-      if (!this.viewer || this.viewer.isDestroyed())
-        return;
+      if (!this.viewer || this.viewer.isDestroyed()) return;
 
       this.viewer.resize();
       this.viewer.scene.requestRender();
@@ -104,7 +92,13 @@ export class CesiumDirective
     this.resizeObserver?.disconnect();
     this.resizeObserver = undefined;
 
-    this.manager.clearViewer();
+    this.manager.disposeViewer();
+
+    if (this.cameraMoveEndHandler && this.viewer) {
+      this.viewer.camera.moveEnd.removeEventListener(this.cameraMoveEndHandler);
+    }
+
+    this.cameraMoveEndHandler = undefined;
 
     this.viewer?.destroy();
     this.viewer = undefined;

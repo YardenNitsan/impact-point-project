@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Coordinate } from '../../../services/shared.service';
+import { Coordinate } from '../../../models/coordinate.model';
+import { environment } from '../../../../../../environment';
 
 export interface SimulationHistoryItem {
   id: string;
@@ -12,7 +13,7 @@ export interface SimulationHistoryItem {
 
 @Injectable({ providedIn: 'root' })
 export class SimulationHistoryService {
-  private API_URL = 'http://localhost:3000/api/simulation';
+  private API_URL = environment.SIMULATION_REQUEST_URL;
 
   constructor(private http: HttpClient) {}
 
@@ -22,7 +23,7 @@ export class SimulationHistoryService {
   deleteSimulation(id: string): Observable<void> {
     return this.http.delete<void>(`${this.API_URL}/${id}`);
   }
-  watchSimulation(id:string): Observable<Coordinate[]>{
+  watchSimulation(id: string): Observable<Coordinate[]> {
     return this.http.get<Coordinate[]>(`${this.API_URL}/${id}`);
   }
 }

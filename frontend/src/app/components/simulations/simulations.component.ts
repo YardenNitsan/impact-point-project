@@ -9,11 +9,10 @@ type ViewMode = 'history' | 'form' | 'details';
   selector: 'app-simulations',
   imports: [HistoryComponent, FormComponent, DetailsComponent],
   templateUrl: './simulations.component.html',
-  styleUrl: './simulations.component.css'
+  styleUrl: './simulations.component.css',
 })
 export class SimulationsComponent {
-
-   viewMode: ViewMode = 'history';
+  viewMode: ViewMode = 'history';
   total = 0;
   selectedSimulationId?: string;
 
@@ -26,6 +25,7 @@ export class SimulationsComponent {
   }
 
   openDetails(id: string) {
+    if (!id) return;
     this.selectedSimulationId = id;
     this.viewMode = 'details';
   }
