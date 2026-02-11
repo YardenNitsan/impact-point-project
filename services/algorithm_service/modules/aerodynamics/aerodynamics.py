@@ -63,33 +63,33 @@ class AeroRef:
 
     Attributes
     ----------
-    Sref : float
+    reference_area : float
         Reference area [m²]
-    lref : float
+    reference_length : float
         Reference length [m]
     """
 
-    Sref: float
-    lref: float
+    reference_area: float
+    reference_length: float
 
 
 # ============================================================
 # Aerodynamic force & moment model
 # ============================================================
 
-def compute_Xv_Zv_My_from_table(
+def compute_aerodynamic_loads_from_lookup_table(
     *,
-    P: float,
-    T: float,
-    vx: float,
-    vz: float,
-    wind_x: float,
-    wind_z: float,
+    static_pressure: float,
+    static_temperature: float,
+    velocity_x: float,
+    velocity_z: float,
+    wind_velocity_x: float,
+    wind_velocity_z: float,
     alpha: float,
     mach: float,
-    coeffs,
-    ref: AeroRef,
-    q: float,
+    aerodynamic_coefficients,
+    aero_reference: AeroRef,
+    pitch_rate: float,
     lcg: float = 0.0,
 ) -> Tuple[float, float, float, float, float]:
     """
@@ -97,25 +97,25 @@ def compute_Xv_Zv_My_from_table(
 
     Parameters
     ----------
-    P : float
+    static_pressure : float
         Static pressure [Pa]
-    T : float
+    static_temperature : float
         Static temperature [K]
-    vx, vz : float
+    velocity_x, velocity_z : float
         Vehicle inertial velocity components [m/s]
-    wind_x, wind_z : float
+    wind_velocity_x, wind_velocity_z : float
         Wind velocity components expressed in solver axes [m/s]
         (wind is subtracted to obtain air-relative velocity)
     alpha : float
         Angle of attack [rad]
     mach : float
         Mach number (passed through for diagnostics)
-    coeffs : object
+    aerodynamic_coefficients : object
         Aerodynamic coefficients container with:
         CD, CL, CM0, Cm_alpha, Cmq
-    ref : AeroRef
+    aero_reference : AeroRef
         Aerodynamic reference geometry
-    q : float
+    pitch_rate : float
         Pitch rate [rad/s]
     lcg : float, optional
         Non-dimensional center-of-gravity offset contribution.
@@ -137,73 +137,73 @@ def compute_Xv_Zv_My_from_table(
     Notation
     --------
     vx_rel, vz_rel : air-relative velocity components
-    V              : airspeed magnitude
+    airspeed              : airspeed magnitude
     rho            : air density (ideal gas law)
-    q_bar          : dynamic pressure = 0.5 * rho * V^2
-    gamma_rel      : flow-relative flight-path angle = atan2(vz_rel, vx_rel)
+    q_bar          : dynamic pressure = 0.5 * rho * airspeed^2
+    flow_relative_flight_path_angle      : flow-relative flight-path angle = atan2(vz_rel, vx_rel)
     """
 
     # --------------------------------------------------------
     # Extract aerodynamic coefficients
     # --------------------------------------------------------
-    CD = float(coeffs.CD)        # drag coefficient
-    CL = float(coeffs.CL)        # lift coefficient
-    CM0 = float(coeffs.CM0)      # baseline moment coefficient
-    Cm_alpha = float(coeffs.Cm_alpha)  # moment slope vs. alpha
-    Cmq = float(coeffs.Cmq)      # pitch-rate damping coefficient
+    CD = float(aerodynamic_coefficients.CD)        # drag coefficient
+    CL = float(aerodynamic_coefficients.CL)        # lift coefficient
+    CM0 = float(aerodynamic_coefficients.CM0)      # baseline moment coefficient
+    Cm_alpha = float(aerodynamic_coefficients.Cm_alpha)  # moment slope vs. alpha
+    Cmq = float(aerodynamic_coefficients.Cmq)      # pitch-rate damping coefficient
 
     # --------------------------------------------------------
     # Air-relative velocity (vehicle velocity relative to wind)
     # --------------------------------------------------------
-    vx_rel = vx - wind_x
-    vz_rel = vz - wind_z
-    V = math.hypot(vx_rel, vz_rel)
+    vx_rel = velocity_x - wind_velocity_x
+    vz_rel = velocity_z - wind_velocity_z
+    airspeed = math.hypot(vx_rel, vz_rel)
 
-    if V < MIN_AIRSPEED_FOR_FORCES:
+    if airspeed < MIN_AIRSPEED_FOR_FORCES:
         # If airspeed is essentially zero, aerodynamic loads are negligible.
         return 0.0, 0.0, 0.0, mach, CM0
 
     # --------------------------------------------------------
     # Flow-relative flight-path angle
     # --------------------------------------------------------
-    gamma_rel = math.atan2(vz_rel, vx_rel)
+    flow_relative_flight_path_angle = math.atan2(vz_rel, vx_rel)
 
     # --------------------------------------------------------
     # Density and dynamic pressure
     # --------------------------------------------------------
-    rho = P / (R_AIR * T)
-    q_bar = 0.5 * rho * V * V
+    rho = static_pressure / (R_AIR * static_temperature)
+    q_bar = 0.5 * rho * airspeed * airspeed
 
     # --------------------------------------------------------
     # Aerodynamic forces in wind axes (Drag opposite flow, Lift perpendicular)
     # --------------------------------------------------------
-    D = q_bar * ref.Sref * CD
-    L = q_bar * ref.Sref * CL
+    drag_force = q_bar * aero_reference.reference_area * CD
+    lift_force = q_bar * aero_reference.reference_area * CL
 
     # --------------------------------------------------------
-    # Transform to inertial axes using gamma_rel
+    # Transform to inertial axes using flow_relative_flight_path_angle
     # --------------------------------------------------------
-    cos_g = math.cos(gamma_rel)
-    sin_g = math.sin(gamma_rel)
+    cos_flow_angle = math.cos(flow_relative_flight_path_angle)
+    sin_flow_angle = math.sin(flow_relative_flight_path_angle)
 
-    Xv = (-D * cos_g) - (L * sin_g)
-    Zv = (-D * sin_g) + (L * cos_g)
+    Xv = (-drag_force * cos_flow_angle) - (lift_force * sin_flow_angle)
+    Zv = (-drag_force * sin_flow_angle) + (lift_force * cos_flow_angle)
 
     # --------------------------------------------------------
     # Pitching moment coefficient model
     # --------------------------------------------------------
-    V_safe = max(V, MIN_AIRSPEED_FOR_MOMENT)
+    safe_airspeed_for_damping = max(airspeed, MIN_AIRSPEED_FOR_MOMENT)
 
     # Cmq term uses standard normalization ~ (q * lref) / (2V)
-    cmq_term = Cmq * (q * ref.lref / (PITCH_DAMPING_SCALE * V_safe))
+    pitch_damping_contribution = Cmq * (pitch_rate * aero_reference.reference_length / (PITCH_DAMPING_SCALE * safe_airspeed_for_damping))
 
     CM_eff = (
         CM0
         + Cm_alpha * alpha
-        + cmq_term
+        + pitch_damping_contribution
         + CL * lcg
     )
 
-    My = q_bar * ref.Sref * ref.lref * CM_eff
+    My = q_bar * aero_reference.reference_area * aero_reference.reference_length * CM_eff
 
     return Xv, Zv, My, mach, CM_eff

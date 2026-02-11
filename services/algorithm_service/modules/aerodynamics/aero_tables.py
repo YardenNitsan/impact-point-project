@@ -18,14 +18,12 @@ import math
 from dataclasses import dataclass
 from typing import Sequence, Tuple
 
-
 # ============================================================
 # Numerical constants
 # ============================================================
 
 INTERPOLATION_EPSILON: float = 1e-12
 """Tolerance used to avoid division-by-zero in interpolation."""
-
 
 # ============================================================
 # Simplified aerodynamic model parameters
@@ -49,18 +47,10 @@ DEFAULT_CM_ALPHA: float = -0.2
 DEFAULT_CMQ: float = -8.0
 """Pitch-rate damping coefficient."""
 
-
-# ============================================================
-# Mathematical constants
-# ============================================================
-
 PI: float = math.pi
 TWO_PI: float = 2.0 * math.pi
+"""Both are for math calculations"""
 
-
-# ============================================================
-# Utility functions
-# ============================================================
 
 def clamp(value: float, lower: float, upper: float) -> float:
     """
@@ -69,24 +59,23 @@ def clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(upper, value))
 
 
-def wrap_to_pi(angle: float) -> float:
+def wrap_to_pi(angle_radians: float) -> float:
     """
     Normalize an angle to the interval (-π, π].
-
     This ensures consistent angular representation.
     """
-    return (angle + PI) % TWO_PI - PI
+    return (angle_radians + PI) % TWO_PI - PI
 
 
-def binary_search_right(grid: Sequence[float], x: float) -> int:
+def binary_search_right(sorted_grid: Sequence[float], query_value: float) -> int:
     """
     Binary search equivalent to bisect.bisect_right.
 
     Parameters
     ----------
-    grid : Sequence[float]
+    sorted_grid : Sequence[float]
         Sorted ascending grid.
-    x : float
+    query_value : float
         Query value.
 
     Returns
@@ -94,17 +83,17 @@ def binary_search_right(grid: Sequence[float], x: float) -> int:
     int
         Index i such that grid[i-1] <= x < grid[i].
     """
-    lo = 0
-    hi = len(grid)
+    left_index = 0
+    right_index = len(sorted_grid)
 
-    while lo < hi:
-        mid = (lo + hi) // 2
-        if x < grid[mid]:
-            hi = mid
+    while left_index < right_index:
+        middle_index = (left_index + right_index) // 2
+        if query_value < sorted_grid[middle_index]:
+            right_index = middle_index
         else:
-            lo = mid + 1
+            left_index = middle_index + 1
 
-    return lo
+    return left_index
 
 
 # ============================================================
@@ -156,21 +145,20 @@ class AeroTable2D:
     mach_grid: Sequence[float]
     data: Sequence[Sequence[AeroCoeffsTable]]
 
-    # --------------------------------------------------------
 
     def idx_pair(
         self,
-        grid: Sequence[float],
-        x: float
+        interpolation_grid: Sequence[float],
+        query_value: float
     ) -> Tuple[int, int, float]:
         """
         Compute interpolation interval and weight.
 
         Parameters
         ----------
-        grid : Sequence[float]
+        interpolation_grid : Sequence[float]
             Sorted interpolation grid.
-        x : float
+        query_value : float
             Query value.
 
         Returns
@@ -188,30 +176,29 @@ class AeroTable2D:
         t      : (x - g0) / (g1 - g0)
         """
 
-        if len(grid) < 2:
+        if len(interpolation_grid) < 2:
             raise ValueError("Grid must contain at least two points.")
 
-        x = clamp(x, grid[0], grid[-1])
+        query_value = clamp(query_value, interpolation_grid[0], interpolation_grid[-1])
 
-        i1 = binary_search_right(grid, x)
+        upper_index = binary_search_right(interpolation_grid, query_value)
 
-        if i1 <= 0:
+        if upper_index <= 0:
             return 0, 1, 0.0
 
-        if i1 >= len(grid):
-            return len(grid) - 2, len(grid) - 1, 1.0
+        if upper_index >= len(interpolation_grid):
+            return len(interpolation_grid) - 2, len(interpolation_grid) - 1, 1.0
 
-        i0 = i1 - 1
-        g0 = grid[i0]
-        g1 = grid[i1]
+        lower_index = upper_index - 1
+        lower_grid_value = interpolation_grid[lower_index]
+        upper_grid_value = interpolation_grid[upper_index]
 
-        if abs(g1 - g0) < INTERPOLATION_EPSILON:
-            return i0, i1, 0.0
+        if abs(upper_grid_value - lower_grid_value) < INTERPOLATION_EPSILON:
+            return lower_index, upper_index, 0.0
 
-        t = (x - g0) / (g1 - g0)
-        return i0, i1, t
+        interpolation_weight = (query_value - lower_grid_value) / (upper_grid_value - lower_grid_value)
+        return lower_index, upper_index, interpolation_weight
 
-    # --------------------------------------------------------
 
     def lookup(self, alpha: float, mach: float) -> AeroCoeffsTable:
         """
@@ -219,43 +206,43 @@ class AeroTable2D:
 
         Notation
         --------
-        a0, a1 : alpha indices
-        m0, m1 : mach indices
-        ta, tm : interpolation fractions
+        alpha_lower_index, alpha_upper_index : alpha indices
+        mach_lower_index, mach_upper_index : mach indices
+        alpha_interpolation_weight, mach_interpolation_weight : interpolation fractions
         """
 
-        a0, a1, ta = self.idx_pair(self.alpha_grid, alpha)
-        m0, m1, tm = self.idx_pair(self.mach_grid, mach)
+        alpha_lower_index, alpha_upper_index, alpha_interpolation_weight = self.idx_pair(self.alpha_grid, alpha)
+        mach_lower_index, mach_upper_index, mach_interpolation_weight = self.idx_pair(self.mach_grid, mach)
 
-        c00 = self.data[a0][m0]
-        c01 = self.data[a0][m1]
-        c10 = self.data[a1][m0]
-        c11 = self.data[a1][m1]
+        coeff_alpha0_mach0 = self.data[alpha_lower_index][mach_lower_index]
+        coeff_alpha0_mach1 = self.data[alpha_lower_index][mach_upper_index]
+        coeff_alpha1_mach0 = self.data[alpha_upper_index][mach_lower_index]
+        coeff_alpha1_mach1 = self.data[alpha_upper_index][mach_upper_index]
 
-        def lerp(u: float, v: float, t: float) -> float:
+        def lerp(start_value: float, end_value: float, interpolation_weight: float) -> float:
             """Linear interpolation."""
-            return u + (v - u) * t
+            return start_value + (end_value - start_value) * interpolation_weight
 
-        def bilinear(f00: float, f01: float, f10: float, f11: float) -> float:
+        def bilinear(value_alpha0_mach0: float, value_alpha0_mach1: float, value_alpha1_mach0: float, value_alpha1_mach1: float) -> float:
             """Bilinear interpolation."""
-            f0 = lerp(f00, f01, tm)
-            f1 = lerp(f10, f11, tm)
-            return lerp(f0, f1, ta)
+            interpolated_alpha0_value = lerp(value_alpha0_mach0, value_alpha0_mach1, mach_interpolation_weight)
+            interpolated_alpha1_value = lerp(value_alpha1_mach0, value_alpha1_mach1, mach_interpolation_weight)
+            return lerp(interpolated_alpha0_value, interpolated_alpha1_value, alpha_interpolation_weight)
 
         return AeroCoeffsTable(
-            CD=bilinear(c00.CD, c01.CD, c10.CD, c11.CD),
-            CL=bilinear(c00.CL, c01.CL, c10.CL, c11.CL),
-            CM0=bilinear(c00.CM0, c01.CM0, c10.CM0, c11.CM0),
-            Cm_alpha=bilinear(c00.Cm_alpha, c01.Cm_alpha, c10.Cm_alpha, c11.Cm_alpha),
-            Cmq=bilinear(c00.Cmq, c01.Cmq, c10.Cmq, c11.Cmq),
+            CD=bilinear(coeff_alpha0_mach0.CD, coeff_alpha0_mach1.CD, coeff_alpha1_mach0.CD, coeff_alpha1_mach1.CD),
+            CL=bilinear(coeff_alpha0_mach0.CL, coeff_alpha0_mach1.CL, coeff_alpha1_mach0.CL, coeff_alpha1_mach1.CL),
+            CM0=bilinear(coeff_alpha0_mach0.CM0, coeff_alpha0_mach1.CM0, coeff_alpha1_mach0.CM0, coeff_alpha1_mach1.CM0),
+            Cm_alpha=bilinear(coeff_alpha0_mach0.Cm_alpha, coeff_alpha0_mach1.Cm_alpha, coeff_alpha1_mach0.Cm_alpha, coeff_alpha1_mach1.Cm_alpha),
+            Cmq=bilinear(coeff_alpha0_mach0.Cmq, coeff_alpha0_mach1.Cmq, coeff_alpha1_mach0.Cmq, coeff_alpha1_mach1.Cmq),
         )
 
 
 # ============================================================
-# Simplified Hoerner-style fallback model
+# Hoerner-style fallback model
 # ============================================================
 
-def hoerner_style_coeffs_360(
+def compute_hoerner_aerodynamic_coefficients_full_alpha(
     alpha: float,
     *,
     cd_min: float = DEFAULT_CD_MIN,
@@ -270,23 +257,23 @@ def hoerner_style_coeffs_360(
 
     Notation
     --------
-    a  : wrapped angle of attack
-    sa : sin(a)
-    ca : cos(a)
+    wrapped_alpha  : wrapped angle of attack
+    sin_alpha : sin(wrapped_alpha)
+    cos_alpha : cos(wrapped_alpha)
 
     Model
     -----
-    CL = k * sin(a) * cos(a)
-    CD = CD_min + K * sin²(a)
+    CL = k * sin(wrapped_alpha) * cos(wrapped_alpha)
+    CD = CD_min + K * sin²(wrapped_alpha)
     """
 
-    a = wrap_to_pi(alpha)
+    wrapped_alpha = wrap_to_pi(alpha)
 
-    sa = math.sin(a)
-    ca = math.cos(a)
+    sin_alpha = math.sin(wrapped_alpha)
+    cos_alpha = math.cos(wrapped_alpha)
 
-    CL = k_lift * sa * ca
-    CD = cd_min + cd_sin2_gain * (sa * sa)
+    CL = k_lift * sin_alpha * cos_alpha
+    CD = cd_min + cd_sin2_gain * (sin_alpha * sin_alpha)
 
     return AeroCoeffsTable(
         CD=CD,
@@ -309,14 +296,14 @@ def build_hoerner_style_table_360(
     cmq: float = DEFAULT_CMQ,
 ) -> AeroTable2D:
     """
-    Construct a full aerodynamic lookup table from the fallback model.
+    Construct alpha_value full aerodynamic lookup table from the fallback model.
     """
 
-    data = []
+    aerodynamic_table_data = []
 
-    for a in alpha_grid:
-        coeff = hoerner_style_coeffs_360(
-            a,
+    for alpha_value in alpha_grid:
+        aerodynamic_coefficients = compute_hoerner_aerodynamic_coefficients_full_alpha(
+            alpha_value,
             cd_min=cd_min,
             cd_sin2_gain=cd_sin2_gain,
             k_lift=k_lift,
@@ -325,13 +312,13 @@ def build_hoerner_style_table_360(
             cmq=cmq,
         )
 
-        row = [coeff for _ in mach_grid]
-        data.append(row)
+        mach_row_coefficients = [aerodynamic_coefficients for mach_value in mach_grid]
+        aerodynamic_table_data.append(mach_row_coefficients)
 
     return AeroTable2D(
         alpha_grid=list(alpha_grid),
         mach_grid=list(mach_grid),
-        data=data,
+        data=aerodynamic_table_data,
     )
 
 

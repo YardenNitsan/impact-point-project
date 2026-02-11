@@ -64,7 +64,7 @@ import math
 
 from modules.state.state import State3DOF, StateDerivatives3DOF
 from modules.atmosphere.isa import isa_atmosphere, speed_of_sound
-from modules.aerodynamics.aerodynamics import compute_Xv_Zv_My_from_table, AeroRef
+from modules.aerodynamics.aerodynamics import compute_aerodynamic_loads_from_lookup_table, AeroRef
 from modules.aerodynamics.aero_tables import AeroTable2D, wrap_to_pi
 
 
@@ -170,18 +170,18 @@ def derivatives(
     if altitude_m < 200.0:  # כדי לא להציף את הטרמינל יותר מדי
         print(f"alpha={alpha_rad:+.3f} rad, Mach={mach_number:.2f}, coeffs={coeffs}")
 
-    force_x_N, force_z_N, moment_y_Nm, _, _ = compute_Xv_Zv_My_from_table(
-        P=pressure_Pa,
-        T=temperature_K,
-        vx=vx_inertial,
-        vz=vz_inertial,
-        wind_x=wind_x_mps,
-        wind_z=wind_z_mps,
+    force_x_N, force_z_N, moment_y_Nm, _, _ = compute_aerodynamic_loads_from_lookup_table(
+        static_pressure=pressure_Pa,
+        static_temperature=temperature_K,
+        velocity_x=vx_inertial,
+        velocity_z=vz_inertial,
+        wind_velocity_x=wind_x_mps,
+        wind_velocity_z=wind_z_mps,
         alpha=alpha_rad,
         mach=mach_number,
-        coeffs=coeffs,
-        ref=aero_reference,
-        q=pitch_rate_radps,
+        aerodynamic_coefficients=coeffs,
+        aero_reference=aero_reference,
+        pitch_rate=pitch_rate_radps,
         lcg=center_of_gravity_offset_m,
     )
 

@@ -37,7 +37,7 @@ from modules.state.state import State3DOF
 from modules.solver.run_simulation import run_simulation
 from modules.impact.impact import compute_impact_from_trajectory
 
-from modules.atmosphere.environment import fetch_current_conditions
+from modules.atmosphere.environment import fetch_environmental_conditions
 from modules.atmosphere.wind import AlongTrackShearWind
 
 from modules.aerodynamics.aero_tables import default_demo_table
@@ -293,7 +293,7 @@ def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
     )
 
     # Environment (real-time API with ISA fallback).
-    env = fetch_current_conditions(launch_lat_deg, launch_lon_deg)
+    env = fetch_environmental_conditions(launch_lat_deg, launch_lon_deg)
 
     # Wind model projected onto the trajectory axis (along-track).
     wind_model = AlongTrackShearWind(
@@ -305,8 +305,8 @@ def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
     )
 
     aero_ref = AeroRef(
-        Sref=DEFAULT_REFERENCE_AREA_M2,
-        lref=DEFAULT_REFERENCE_LENGTH_M,
+        reference_area=DEFAULT_REFERENCE_AREA_M2,
+        reference_length=DEFAULT_REFERENCE_LENGTH_M,
     )
 
     trajectory = run_simulation(

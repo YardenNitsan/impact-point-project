@@ -95,7 +95,7 @@ REQUIRED_CURRENT_FIELDS: Tuple[str, ...] = (
 # ============================================================
 
 @dataclass(frozen=True)
-class CurrentConditions:
+class EnvironmentalConditions:
     """
     Atmospheric conditions used by the simulation.
 
@@ -139,7 +139,7 @@ FULL_CIRCLE_DEGREES: float = 360.0
 WIND_DIRECTION_OFFSET_DEGREES: float = 180.0
 
 
-def _convert_meteorological_wind_to_enu(
+def convert_meteorological_wind_to_enu_components(
     wind_speed_mps: float,
     direction_from_degrees: float,
 ) -> Tuple[float, float]:
@@ -188,12 +188,12 @@ FALLBACK_SOURCE_LABEL: str = "isa-fallback"
 API_SOURCE_LABEL: str = "open-meteo"
 
 
-def _build_fallback_conditions(note: str) -> CurrentConditions:
+def build_isa_fallback_conditions(diagnostic_note: str) -> EnvironmentalConditions:
     """
     Construct deterministic ISA fallback conditions.
     """
 
-    return CurrentConditions(
+    return EnvironmentalConditions(
         sea_level_temperature_K=ISA_FALLBACK_TEMPERATURE_K,
         sea_level_pressure_Pa=ISA_FALLBACK_PRESSURE_PA,
         wind_east_10m_mps=CALM_WIND_SPEED_MPS,
@@ -201,7 +201,7 @@ def _build_fallback_conditions(note: str) -> CurrentConditions:
         wind_east_100m_mps=CALM_WIND_SPEED_MPS,
         wind_north_100m_mps=CALM_WIND_SPEED_MPS,
         data_source=FALLBACK_SOURCE_LABEL,
-        diagnostic_note=note,
+        diagnostic_note=diagnostic_note,
     )
 
 
@@ -209,10 +209,10 @@ def _build_fallback_conditions(note: str) -> CurrentConditions:
 # Main API fetch function
 # ============================================================
 
-def fetch_current_conditions(
+def fetch_environmental_conditions(
     latitude: float,
     longitude: float,
-) -> CurrentConditions:
+) -> EnvironmentalConditions:
     """
     Retrieve atmospheric conditions from Open-Meteo.
 
@@ -223,7 +223,7 @@ def fetch_current_conditions(
     request_parameters: Dict[str, Any] = {
         "latitude": latitude,
         "longitude": longitude,
-        "current": list(REQUIRED_CURRENT_FIELDS),
+        "current_api_data": list(REQUIRED_CURRENT_FIELDS),
         "windspeed_unit": REQUESTED_WIND_SPEED_UNIT,
         "pressure_unit": REQUESTED_PRESSURE_UNIT,
         "temperature_unit": REQUESTED_TEMPERATURE_UNIT,
@@ -238,36 +238,36 @@ def fetch_current_conditions(
 
         response.raise_for_status()
 
-        payload = response.json()
-        current = payload.get("current", {})
+        api_response_payload = response.json()
+        current_api_data = api_response_payload.get("current_api_data", {})
 
         for field in REQUIRED_CURRENT_FIELDS:
-            if field not in current:
+            if field not in current_api_data:
                 raise ValueError(f"Missing API field: {field}")
 
-        temp_C = float(current["temperature_2m"])
-        pressure_hPa = float(current["surface_pressure"])
+        temp_C = float(current_api_data["temperature_2m"])
+        pressure_hPa = float(current_api_data["surface_pressure"])
 
         temp_K = temp_C + CELSIUS_TO_KELVIN_OFFSET_K
         pressure_Pa = pressure_hPa * HECTOPASCAL_TO_PASCAL_FACTOR
 
         if not (MIN_REASONABLE_TEMPERATURE_K <= temp_K <= MAX_REASONABLE_TEMPERATURE_K):
-            return _build_fallback_conditions("Temperature out of bounds")
+            return build_isa_fallback_conditions("Temperature out of bounds")
 
         if not (MIN_REASONABLE_PRESSURE_PA <= pressure_Pa <= MAX_REASONABLE_PRESSURE_PA):
-            return _build_fallback_conditions("Pressure out of bounds")
+            return build_isa_fallback_conditions("Pressure out of bounds")
 
-        east_10, north_10 = _convert_meteorological_wind_to_enu(
-            float(current["wind_speed_10m"]),
-            float(current["wind_direction_10m"]),
+        east_10, north_10 = convert_meteorological_wind_to_enu_components(
+            float(current_api_data["wind_speed_10m"]),
+            float(current_api_data["wind_direction_10m"]),
         )
 
-        east_100, north_100 = _convert_meteorological_wind_to_enu(
-            float(current["wind_speed_100m"]),
-            float(current["wind_direction_100m"]),
+        east_100, north_100 = convert_meteorological_wind_to_enu_components(
+            float(current_api_data["wind_speed_100m"]),
+            float(current_api_data["wind_direction_100m"]),
         )
 
-        return CurrentConditions(
+        return EnvironmentalConditions(
             sea_level_temperature_K=temp_K,
             sea_level_pressure_Pa=pressure_Pa,
             wind_east_10m_mps=east_10,
@@ -280,7 +280,7 @@ def fetch_current_conditions(
     except Exception as error:
         # Broad exception handling is intentional:
         # any API/network/format failure triggers deterministic fallback
-        return _build_fallback_conditions(f"API failure: {error}")
+        return build_isa_fallback_conditions(f"API failure: {error}")
 
 
 # ============================================================
@@ -295,7 +295,7 @@ def get_sea_level_environment(
     Return sea-level temperature and pressure in SI units.
     """
 
-    conditions = fetch_current_conditions(latitude, longitude)
+    conditions = fetch_environmental_conditions(latitude, longitude)
 
     return (
         conditions.sea_level_temperature_K,
