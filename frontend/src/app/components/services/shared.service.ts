@@ -7,17 +7,17 @@ export interface Coordinate {
   alt: number;
 }
 
-//needed to be a singelton service who holds data of two components
+// needed to be a singelton service who holds data of two components
 @Injectable({ providedIn: "root" })
 export class SharedService {
 
-  //there was no simulation initialize yet so will be defined to null
+  // simulation initialize
   private subject = new BehaviorSubject<Coordinate[] | null>(null);
 
-  //given Observable for read only 
+  // given Observable for read only 
   data$ = this.subject.asObservable();
 
-  //read last known value without the need to wait for another output
+  // read last known value without the need to wait for another output
   get snapshot(): Coordinate[] | null {
     return this.subject.value;
   }
@@ -27,8 +27,7 @@ export class SharedService {
     this.lastSimulationDuration = seconds;
   }
 
-
-  //give BehaviorSubject new value
+  // give BehaviorSubject new value
   setData(coords: Coordinate[]) {
     this.subject.next(coords);
   }

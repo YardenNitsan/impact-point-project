@@ -14,7 +14,6 @@ export const deleteSimulation = async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Find result
     const result = await SimulationResult.findById(id);
 
     if (!result) {
@@ -23,10 +22,8 @@ export const deleteSimulation = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Delete result
     await SimulationResult.findByIdAndDelete(id);
 
-    // 3. Delete linked input
     if (result.simulationInputId) {
       await SimulationInput.findByIdAndDelete(
         result.simulationInputId

@@ -37,7 +37,6 @@ export class CesiumManager {
 
     const duration = this.shared.lastSimulationDuration;
 
-    // Heavy only when NEW data arrives (but entities are reused)
     this.handles = await drawTrajectoryLOD(
       this.viewer,
       coords,
@@ -57,7 +56,6 @@ export class CesiumManager {
       if (!this.viewer) return;
       if (!this.handles.rawPoints.length) return;
 
-      // ✅ ultra-light update only
       updateTrajectoryLOD(this.viewer, this.handles);
     };
 

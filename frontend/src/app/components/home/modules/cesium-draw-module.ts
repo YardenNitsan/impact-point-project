@@ -31,7 +31,7 @@ const INTERPOLATION_DEGREE = 1;
 const MAX_TERRAIN_SAMPLES = 1200;
 const MAX_ANIMATION_SAMPLES = 2500;
 
-// if durationSeconds is missing/invalid, use a safe default
+// safe duration seconds
 const DEFAULT_ANIMATION_DURATION_SECONDS = 20;
 
 // LOD thresholds (meters)
@@ -82,7 +82,7 @@ export type TrajectoryLODHandles = {
 
   fullPositions?: Cartesian3[];
 
-  // polyline (reused)
+  // polyline
   polylinePositions?: Cartesian3[];
   polylinePositionsCallback?: CallbackProperty;
 
@@ -91,7 +91,7 @@ export type TrajectoryLODHandles = {
 
   polylineEntity?: Entity;
 
-  // moving entity (reused)
+  // moving entity
   movingProperty?: SampledPositionProperty;
   movingEntity?: Entity;
 
@@ -160,7 +160,7 @@ function normalizeDurationSeconds(durationSeconds: number): number {
 }
 
 /* =========================
-   Terrain sampling (fast + cached)
+   Terrain sampling (cached)
    ========================= */
 
 async function sampleTerrainFastCached(
@@ -231,7 +231,7 @@ async function sampleTerrainFastCached(
 }
 
 /* =========================
-   LOD update (ultra cheap)
+   LOD update
    ========================= */
 
 export function updateTrajectoryLOD(viewer: Viewer, handles: TrajectoryLODHandles) {
@@ -247,7 +247,7 @@ export function updateTrajectoryLOD(viewer: Viewer, handles: TrajectoryLODHandle
 }
 
 /* =========================
-   Main draw (reuses entities)
+   Main draw
    ========================= */
 
 export async function drawTrajectoryLOD(
@@ -274,10 +274,10 @@ export async function drawTrajectoryLOD(
   handles.lastKey = key;
   handles.lastDurationSeconds = safeDuration;
 
-  // 1) terrain
+  // terrain
   const terrain = await sampleTerrainFastCached(viewer, rawPoints, key);
 
-  // 2) full positions
+  // full positions
   const full = new Array<Cartesian3>(rawPoints.length);
   for (let i = 0; i < rawPoints.length; i++) {
     const p = rawPoints[i];
@@ -286,7 +286,7 @@ export async function drawTrajectoryLOD(
   }
   handles.fullPositions = full;
 
-  // 3) polyline reusable (CallbackProperty for positions + width)
+  // polyline reusable (CallbackProperty for positions + width)
   if (!handles.polylinePositions) handles.polylinePositions = [];
   if (handles.polylineWidth === undefined) handles.polylineWidth = POLYLINE_WIDTH_NEAR;
 
@@ -316,7 +316,7 @@ export async function drawTrajectoryLOD(
   // fill initial LOD
   updateTrajectoryLOD(viewer, handles);
 
-  // 4) moving entity reusable
+  // moving entity
   handles.movingProperty = new SampledPositionProperty();
   handles.movingProperty.setInterpolationOptions({
     interpolationAlgorithm: LagrangePolynomialApproximation,

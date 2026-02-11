@@ -10,8 +10,6 @@ export interface SimulationHistoryItem {
   formattedDuration?: string;
 }
 
-
-
 @Injectable({ providedIn: 'root' })
 export class SimulationHistoryService {
   private API_URL = 'http://localhost:3000/api/simulation';

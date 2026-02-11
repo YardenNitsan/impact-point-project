@@ -17,23 +17,19 @@ export class SimulationsComponent {
   total = 0;
   selectedSimulationId?: string;
 
-  // from history
   onCountChanged(value: number) {
     this.total = value;
   }
 
-  // top button
   toggleForm() {
     this.viewMode = this.viewMode === 'form' ? 'history' : 'form';
   }
 
-  // history -> details
   openDetails(id: string) {
     this.selectedSimulationId = id;
     this.viewMode = 'details';
   }
 
-  // back from form / details
   backToHistory() {
     this.viewMode = 'history';
     this.selectedSimulationId = undefined;

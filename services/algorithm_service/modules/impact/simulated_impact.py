@@ -105,10 +105,10 @@ Used only for distance estimation in downsampling (flat approximation).
 # Simulation configuration constants
 # ============================================================
 
-DEFAULT_TIME_STEP_S: float = 0.005
+DEFAULT_TIME_STEP_S: float = 0.01
 """Integrator time step [s]."""
 
-DEFAULT_MAX_SIM_TIME_S: float = 300.0
+DEFAULT_MAX_SIM_TIME_S: float = 800.0
 """Maximum simulated time horizon [s]."""
 
 DEFAULT_TARGET_TRAJECTORY_POINTS: int = 500

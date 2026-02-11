@@ -15,12 +15,11 @@ app.use(cors({
   origin: ALLOWED_ORIGIN,
   methods:["GET", "POST", "DELETE"],
 
-  //to allow json only
+  // to allow json only
   allowHeaders: ["Content-Type"]
 }));
 app.use(express.json());
 
-// Mongo connection
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("Mongo connected"))

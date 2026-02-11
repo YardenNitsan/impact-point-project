@@ -12,7 +12,6 @@ export const getSimulationToWatch = async (
       return res.status(404).json({ error: "Simulation not found" });
     }
 
-    // 🔥 הפרונט מצפה Coordinate[]
     res.status(200).json(sim.coordinates);
   } catch (err) {
     console.error(err);

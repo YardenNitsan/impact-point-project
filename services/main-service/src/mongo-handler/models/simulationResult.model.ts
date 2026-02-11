@@ -10,7 +10,7 @@ export interface SimulationResultDocument extends mongoose.Document {
     alt: number;
   }[];
   durationSeconds: number;
-  createdAt: Date;   // 🔥 זה היה חסר
+  createdAt: Date;
 }
 
 
