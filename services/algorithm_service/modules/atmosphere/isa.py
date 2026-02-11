@@ -75,7 +75,7 @@ MIN_VALID_ALTITUDE_M: float = 0.0
 # ISA troposphere model
 # ============================================================
 
-def isa_atmosphere(
+def compute_isa_troposphere_state(
     altitude_m: float,
     sea_level_temperature_K: float,
     sea_level_pressure_Pa: float,
@@ -103,32 +103,32 @@ def isa_atmosphere(
 
     Notation
     --------
-    h   : altitude
+    clamped_altitude_m   : altitude
     T0  : sea-level temperature
     P0  : sea-level pressure
     L   : lapse rate
     rho : air density
     """
 
-    h = max(
+    clamped_altitude_m = max(
         MIN_VALID_ALTITUDE_M,
         min(float(altitude_m), TROPOSPHERE_MAX_VALID_ALTITUDE_M),
     )
 
-    T = (
+    temperature_K = (
         sea_level_temperature_K
-        - TROPOSPHERE_TEMPERATURE_LAPSE_RATE_K_PER_M * h
+        - TROPOSPHERE_TEMPERATURE_LAPSE_RATE_K_PER_M * clamped_altitude_m
     )
 
-    P = sea_level_pressure_Pa * (
-        T / sea_level_temperature_K
+    pressure_Pa = sea_level_pressure_Pa * (
+        temperature_K / sea_level_temperature_K
     ) ** ISA_PRESSURE_EXPONENT
 
-    rho = P / (
-        AIR_SPECIFIC_GAS_CONSTANT_J_PER_KG_K * T
+    rho = pressure_Pa / (
+        AIR_SPECIFIC_GAS_CONSTANT_J_PER_KG_K * temperature_K
     )
 
-    return T, P, rho
+    return temperature_K, pressure_Pa, rho
 
 
 # ============================================================
@@ -139,7 +139,7 @@ DEFAULT_AIR_HEAT_CAPACITY_RATIO: float = 1.4
 """Ratio of specific heats for air (gamma)."""
 
 
-def speed_of_sound(
+def compute_speed_of_sound(
     temperature_K: float,
     heat_capacity_ratio: float = DEFAULT_AIR_HEAT_CAPACITY_RATIO,
     gas_constant: float = AIR_SPECIFIC_GAS_CONSTANT_J_PER_KG_K,

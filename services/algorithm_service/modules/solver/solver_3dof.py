@@ -63,7 +63,7 @@ Assumptions
 import math
 
 from modules.state.state import State3DOF, StateDerivatives3DOF
-from modules.atmosphere.isa import isa_atmosphere, speed_of_sound
+from modules.atmosphere.isa import compute_isa_troposphere_state, compute_speed_of_sound
 from modules.aerodynamics.aerodynamics import compute_aerodynamic_loads_from_lookup_table, AeroRef
 from modules.aerodynamics.aero_tables import AeroTable2D, wrap_to_pi
 
@@ -140,13 +140,13 @@ def derivatives(
     # Atmosphere model (ISA)
     # ========================================================
 
-    temperature_K, pressure_Pa, _density = isa_atmosphere(
+    temperature_K, pressure_Pa, _density = compute_isa_troposphere_state(
         altitude_m,
         sea_level_temperature_K,
         sea_level_pressure_Pa,
     )
 
-    a_sound = max(speed_of_sound(temperature_K), MIN_SPEED_OF_SOUND_MPS)
+    a_sound = max(compute_speed_of_sound(temperature_K), MIN_SPEED_OF_SOUND_MPS)
 
     # ========================================================
     # Relative airflow

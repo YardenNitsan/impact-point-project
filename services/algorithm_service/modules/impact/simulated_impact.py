@@ -38,7 +38,7 @@ from modules.solver.run_simulation import run_simulation
 from modules.impact.impact import compute_impact_from_trajectory
 
 from modules.atmosphere.environment import fetch_environmental_conditions
-from modules.atmosphere.wind import AlongTrackShearWind
+from modules.atmosphere.wind import AlongTrackWindShearModel
 
 from modules.aerodynamics.aero_tables import default_demo_table
 from modules.aerodynamics.aerodynamics import AeroRef
@@ -296,7 +296,7 @@ def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
     env = fetch_environmental_conditions(launch_lat_deg, launch_lon_deg)
 
     # Wind model projected onto the trajectory axis (along-track).
-    wind_model = AlongTrackShearWind(
+    wind_model = AlongTrackWindShearModel(
         azimuth_rad=azimuth_rad,
         wind_east_10m_mps=env.wind_east_10m_mps,
         wind_north_10m_mps=env.wind_north_10m_mps,

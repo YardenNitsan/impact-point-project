@@ -46,7 +46,7 @@ from typing import Tuple
 # ============================================================
 
 @dataclass(frozen=True)
-class State3DOF:
+class RigidBodyState3DOF:
     """
     3DOF rigid-body state vector.
 
@@ -66,7 +66,7 @@ class State3DOF:
 
 
 @dataclass(frozen=True)
-class StateDerivatives3DOF:
+class RigidBodyStateDerivatives3DOF:
     """
     Time derivative of the 3DOF state vector.
 
@@ -89,7 +89,7 @@ class StateDerivatives3DOF:
 # Equations of motion
 # ============================================================
 
-def compute_inertial_accelerations(
+def compute_rigid_body_accelerations(
     x_force_N: float,
     z_force_N: float,
     pitching_moment_Nm: float,
@@ -104,34 +104,34 @@ def compute_inertial_accelerations(
     Implements the rigid-body equations of motion.
     """
 
-    x_acceleration = x_force_N / mass_kg
+    x_inertial_acceleration = x_force_N / mass_kg
 
-    z_acceleration = (
+    z_inertial_acceleration = (
         z_force_N / mass_kg
         - gravity_mps2
     )
 
-    pitch_acceleration = (
+    pitch_angular_acceleration = (
         pitching_moment_Nm
         / pitch_inertia_kgm2
     )
 
-    return x_acceleration, z_acceleration, pitch_acceleration
+    return x_inertial_acceleration, z_inertial_acceleration, pitch_angular_acceleration
 
 
 # ============================================================
 # State derivative assembly
 # ============================================================
 
-def compute_state_derivatives(
-    state: State3DOF,
+def compute_rigid_body_state_derivatives(
+    rigid_body_state: RigidBodyState3DOF,
     x_force_N: float,
     z_force_N: float,
     pitching_moment_Nm: float,
     mass_kg: float,
     pitch_inertia_kgm2: float,
     gravity_mps2: float,
-) -> StateDerivatives3DOF:
+) -> RigidBodyStateDerivatives3DOF:
     """
     Assemble the time derivative of the rigid-body state.
 
@@ -144,7 +144,7 @@ def compute_state_derivatives(
         x_acceleration,
         z_acceleration,
         pitch_acceleration,
-    ) = compute_inertial_accelerations(
+    ) = compute_rigid_body_accelerations(
         x_force_N,
         z_force_N,
         pitching_moment_Nm,
@@ -153,11 +153,11 @@ def compute_state_derivatives(
         gravity_mps2,
     )
 
-    return StateDerivatives3DOF(
-        x_position_rate_mps=state.x_velocity_mps,
-        z_altitude_rate_mps=state.z_velocity_mps,
+    return RigidBodyStateDerivatives3DOF(
+        x_position_rate_mps=rigid_body_state.x_velocity_mps,
+        z_altitude_rate_mps=rigid_body_state.z_velocity_mps,
         x_acceleration_mps2=x_acceleration,
         z_acceleration_mps2=z_acceleration,
-        pitch_angle_rate_radps=state.pitch_rate_radps,
+        pitch_angle_rate_radps=rigid_body_state.pitch_rate_radps,
         pitch_acceleration_radps2=pitch_acceleration,
     )

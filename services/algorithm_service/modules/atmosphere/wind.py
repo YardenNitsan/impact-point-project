@@ -79,7 +79,7 @@ class WindProfileMeta:
 # Along-track wind shear model
 # ============================================================
 
-class AlongTrackShearWind:
+class AlongTrackWindShearModel:
     """
     Deterministic altitude-dependent wind model.
 
@@ -175,7 +175,7 @@ class AlongTrackShearWind:
     # Public interface
     # --------------------------------------------------------
 
-    def wind_at_height(
+    def compute_wind_at_altitude(
         self,
         altitude_m: float,
     ) -> Tuple[float, float]:
@@ -190,26 +190,26 @@ class AlongTrackShearWind:
             Vertical wind (zero in this model)
         """
 
-        h = max(float(altitude_m), MIN_VALID_HEIGHT_M)
+        effective_altitude_m = max(float(altitude_m), MIN_VALID_HEIGHT_M)
 
-        sign = 1.0 if self._wind_along_10m_mps >= 0.0 else -1.0
+        reference_wind_direction_sign = 1.0 if self._wind_along_10m_mps >= 0.0 else -1.0
 
-        base = max(
+        reference_wind_magnitude = max(
             abs(self._wind_along_10m_mps),
             MIN_NONZERO_WIND_SPEED_MPS,
         )
 
-        wind_track = (
-            sign
-            * base
-            * (h / REFERENCE_HEIGHT_LOW_M) ** self._shear_exponent
+        along_track_wind_speed = (
+            reference_wind_direction_sign
+            * reference_wind_magnitude
+            * (effective_altitude_m / REFERENCE_HEIGHT_LOW_M) ** self._shear_exponent
         )
 
-        return wind_track, 0.0
+        return along_track_wind_speed, 0.0
 
     # --------------------------------------------------------
 
-    def meta(self) -> WindProfileMeta:
+    def get_profile_metadata(self) -> WindProfileMeta:
         """
         Return diagnostic wind profile metadata.
         """
