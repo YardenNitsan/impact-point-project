@@ -21,7 +21,7 @@ import { Coordinate } from '../../models/coordinate.model';
    Performance constants
    ========================= */
 
-const TERRAIN_ALTITUDE_OFFSET_METERS = 5;
+const TERRAIN_ALTITUDE_OFFSET_METERS = 3;
 
 const POLYLINE_ALPHA = 0.95;
 const MOVING_POINT_PIXEL_SIZE = 12;
@@ -39,9 +39,9 @@ const CAMERA_HEIGHT_LOD_MEDIUM_METERS = 50_000;
 const CAMERA_HEIGHT_LOD_FAR_METERS = 200_000;
 
 // Polyline max points by LOD
-const MAX_POLYLINE_POINTS_LOD_NEAR = 2500;
-const MAX_POLYLINE_POINTS_LOD_MEDIUM = 2000;
-const MAX_POLYLINE_POINTS_LOD_FAR = 700;
+const MAX_POLYLINE_POINTS_LOD_NEAR = 500;
+const MAX_POLYLINE_POINTS_LOD_MEDIUM = 300;
+const MAX_POLYLINE_POINTS_LOD_FAR = 120;
 
 // Polyline width by LOD
 const POLYLINE_WIDTH_NEAR = 4;
@@ -56,11 +56,11 @@ const TERRAIN_CACHE_MAX_KEYS = 8;
 const terrainCache = new Map<string, number[]>();
 
 function terrainCacheGet(key: string): number[] | undefined {
-  const v = terrainCache.get(key);
-  if (!v) return undefined;
+  const simulation_path = terrainCache.get(key);
+  if (!simulation_path) return undefined;
   terrainCache.delete(key);
-  terrainCache.set(key, v);
-  return v;
+  terrainCache.set(key, simulation_path);
+  return simulation_path;
 }
 
 function terrainCacheSet(key: string, heights: number[]) {
@@ -111,20 +111,21 @@ function buildTrajectoryKey(points: Coordinate[]): string {
   const totalPoints = points.length;
   if (totalPoints === 0) return 'empty';
 
-  const a = points[0];
-  const b = points[Math.floor(totalPoints / 2)];
-  const c = points[totalPoints - 1];
+  const first_point = points[0];
+  const middle_point = points[Math.floor(totalPoints / 2)];
+  const last_point = points[totalPoints - 1];
 
   const pack = (p: Coordinate) =>
     `${p.lon.toFixed(6)}|${p.lat.toFixed(6)}|${(p.alt ?? 0).toFixed(2)}`;
 
-  return `${totalPoints}::${pack(a)}::${pack(b)}::${pack(c)}`;
+  return `${totalPoints}::${pack(first_point)}::${pack(middle_point)}::${pack(last_point)}`;
 }
 
 function getLODMaxPoints(viewer: Viewer): number {
-  const h = viewer.camera.positionCartographic.height;
-  if (h > CAMERA_HEIGHT_LOD_FAR_METERS) return MAX_POLYLINE_POINTS_LOD_FAR;
-  if (h > CAMERA_HEIGHT_LOD_MEDIUM_METERS)
+  const camera_height_above_ground = viewer.camera.positionCartographic.height;
+  if (camera_height_above_ground > CAMERA_HEIGHT_LOD_FAR_METERS)
+    return MAX_POLYLINE_POINTS_LOD_FAR;
+  if (camera_height_above_ground > CAMERA_HEIGHT_LOD_MEDIUM_METERS)
     return MAX_POLYLINE_POINTS_LOD_MEDIUM;
   return MAX_POLYLINE_POINTS_LOD_NEAR;
 }
@@ -197,14 +198,18 @@ async function sampleTerrainFastCached(
 
   for (let i = 0; i < totalPoints; i += sampleStep) {
     sampledPointIndices.push(i);
-    const p = points[i];
-    sampledCartographicPositions.push(Cartographic.fromDegrees(p.lon, p.lat));
+    const point = points[i];
+    sampledCartographicPositions.push(
+      Cartographic.fromDegrees(point.lon, point.lat),
+    );
   }
 
   if (sampledPointIndices[sampledPointIndices.length - 1] !== totalPoints - 1) {
     sampledPointIndices.push(totalPoints - 1);
-    const p = points[totalPoints - 1];
-    sampledCartographicPositions.push(Cartographic.fromDegrees(p.lon, p.lat));
+    const point = points[totalPoints - 1];
+    sampledCartographicPositions.push(
+      Cartographic.fromDegrees(point.lon, point.lat),
+    );
   }
 
   let sampledTerrainResults: Cartographic[];
@@ -219,26 +224,37 @@ async function sampleTerrainFastCached(
   }
 
   for (let i = 0; i < sampledPointIndices.length; i++) {
-    const h = sampledTerrainResults[i]?.height;
-    terrainHeightsMeters[sampledPointIndices[i]] = Number.isFinite(h)
-      ? (h as number)
+    const height = sampledTerrainResults[i]?.height;
+    terrainHeightsMeters[sampledPointIndices[i]] = Number.isFinite(height)
+      ? (height as number)
       : 0;
   }
 
   // interpolate between sampled points
-  for (let s = 0; s < sampledPointIndices.length - 1; s++) {
-    const a = sampledPointIndices[s];
-    const b = sampledPointIndices[s + 1];
+  for (
+    let segmentIndex = 0;
+    segmentIndex < sampledPointIndices.length - 1;
+    segmentIndex++
+  ) {
+    const startSampleIndex = sampledPointIndices[segmentIndex];
+    const endSampleIndex = sampledPointIndices[segmentIndex + 1];
 
-    const ha = terrainHeightsMeters[a];
-    const hb = terrainHeightsMeters[b];
+    const startHeightMeters = terrainHeightsMeters[startSampleIndex];
+    const endHeightMeters = terrainHeightsMeters[endSampleIndex];
 
-    const span = b - a;
-    if (span <= 1) continue;
+    const missing_points_amount = endSampleIndex - startSampleIndex;
+    if (missing_points_amount <= 1) continue;
 
-    for (let i = a + 1; i < b; i++) {
-      const t = (i - a) / span;
-      terrainHeightsMeters[i] = ha + (hb - ha) * t;
+    for (
+      let interpolatedIndex = startSampleIndex + 1;
+      interpolatedIndex < endSampleIndex;
+      interpolatedIndex++
+    ) {
+      const interpolationRatio =
+        (interpolatedIndex - startSampleIndex) / missing_points_amount;
+      terrainHeightsMeters[interpolatedIndex] =
+        startHeightMeters +
+        (endHeightMeters - startHeightMeters) * interpolationRatio;
     }
   }
 
@@ -308,12 +324,13 @@ export async function drawTrajectoryLOD(
   // full positions
   const fullTrajectoryPositions = new Array<Cartesian3>(rawPoints.length);
   for (let i = 0; i < rawPoints.length; i++) {
-    const p = rawPoints[i];
-    const h = altitudeWithOffsetMeters(p.alt) + (terrainHeightsMeters[i] ?? 0);
+    const point = rawPoints[i];
+    const height =
+      altitudeWithOffsetMeters(point.alt) + (terrainHeightsMeters[i] ?? 0);
     fullTrajectoryPositions[i] = Cartesian3.fromDegrees(
-      p.lon,
-      p.lat,
-      Number.isFinite(h) ? h : 0,
+      point.lon,
+      point.lat,
+      Number.isFinite(height) ? height : 0,
     );
   }
   handles.fullPositions = fullTrajectoryPositions;
