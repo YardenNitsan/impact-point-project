@@ -13,17 +13,21 @@ export interface SimulationHistoryItem {
 
 @Injectable({ providedIn: 'root' })
 export class SimulationHistoryService {
-  private API_URL = environment.SIMULATION_REQUEST_URL;
-
   constructor(private http: HttpClient) {}
 
   getSimulations(): Observable<SimulationHistoryItem[]> {
-    return this.http.get<SimulationHistoryItem[]>(this.API_URL);
+    return this.http.get<SimulationHistoryItem[]>(
+      environment.SIMULATION_REQUEST_URL,
+    );
   }
   deleteSimulation(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.API_URL}/${id}`);
+    return this.http.delete<void>(
+      `${environment.SIMULATION_REQUEST_URL}/${id}`,
+    );
   }
   watchSimulation(id: string): Observable<Coordinate[]> {
-    return this.http.get<Coordinate[]>(`${this.API_URL}/${id}`);
+    return this.http.get<Coordinate[]>(
+      `${environment.SIMULATION_REQUEST_URL}/${id}`,
+    );
   }
 }
