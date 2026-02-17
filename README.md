@@ -77,3 +77,7 @@ docker run -d \
 ```
 mongo will run on port 27017. 
 make sure this port is not used
+
+
+
+
