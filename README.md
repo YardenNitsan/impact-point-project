@@ -19,7 +19,7 @@ No private credentials are included in this repository.
 - git clone https://github.com/YardenNitsan/impactpoint.git
 - cd impactpoint
 
-### 2. Install Dependecies for backend
+### 2. Install Dependecies for node backend
 - cd services/main-service
 - npm install
 - npm build
@@ -27,9 +27,23 @@ No private credentials are included in this repository.
 
 server will run on: http://localhost:3000
 
-### 3. Install dependencies for frontend
+### 3. Install Dependecies for python backend
+- cd services/ImpactServicePython
+- pip install numpy matplotlib fastapi uvicorn
+
+### to run: 
+- cd services/ImpactServicePython/services/algorithm_service
+- python -m uvicorn main:app --reload
+
+server will run on http://localhost:8000
+
+to send packets easy for demo you can go to http://localhost:8000/docs
+
+
+### 4. Install dependencies for frontend
 - cd frontend
 - npm install
+- npm install -g @angular/cli@v19
 - ng serve
 frontend will run on: http://localhost:4200
 
@@ -63,7 +77,3 @@ docker run -d \
 ```
 mongo will run on port 27017. 
 make sure this port is not used
-
-
-
-
