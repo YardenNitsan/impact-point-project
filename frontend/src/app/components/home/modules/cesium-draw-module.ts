@@ -13,6 +13,14 @@ import {
   VelocityOrientationProperty,
   Viewer,
   sampleTerrainMostDetailed,
+  Cartesian2,
+  HorizontalOrigin,
+  LabelStyle,
+  Math as CesiumMath,
+  NearFarScalar,
+  VerticalOrigin,
+  LabelGraphics,
+  ClockRange,
 } from 'cesium';
 
 import { Coordinate } from '../../models/coordinate.model';
@@ -47,6 +55,18 @@ const MAX_POLYLINE_POINTS_LOD_FAR = 120;
 const POLYLINE_WIDTH_NEAR = 4;
 const POLYLINE_WIDTH_MEDIUM = 3;
 const POLYLINE_WIDTH_FAR = 2;
+
+// watch simulation speed
+const DEFAULT_SIMULATION_SPEED = 1;
+
+// Label Constants
+const LABEL_SCALE_NEAR_DISTANCE = 2000;
+const LABEL_SCALE_NEAR_VALUE = 1.0;
+const LABEL_SCALE_FAR_DISTANCE = 150000;
+const LABEL_SCALE_FAR_VALUE = 0.0;
+
+const LABEL_PIXEL_OFFSET_X = 12;
+const LABEL_PIXEL_OFFSET_Y = -12;
 
 /* =========================
    Terrain cache
@@ -381,7 +401,7 @@ export async function drawTrajectoryLOD(
     Math.ceil(totalTrajectoryPoints / MAX_ANIMATION_SAMPLES),
   );
 
-  const animationStartTime = JulianDate.now();
+  const animationStartTime = JulianDate.fromDate(new Date(0));
   if (totalTrajectoryPoints < 2) return handles;
 
   const secondsPerSample =
@@ -408,6 +428,39 @@ export async function drawTrajectoryLOD(
     );
   }
 
+  const movingLabelText = new CallbackProperty((time) => {
+    const pos = handles.movingProperty?.getValue(time);
+    if (!pos) return '';
+
+    const carto = Cartographic.fromCartesian(pos);
+    const lat = CesiumMath.toDegrees(carto.latitude);
+    const lon = CesiumMath.toDegrees(carto.longitude);
+    const alt = carto.height;
+
+    return `lat: ${lat.toFixed(6)}\nlon: ${lon.toFixed(6)}\nalt: ${alt.toFixed(1)} m`;
+  }, false);
+
+  const movingLabel = new LabelGraphics({
+    text: movingLabelText,
+    font: '14px monospace',
+    fillColor: Color.WHITE,
+    outlineColor: Color.BLACK,
+    outlineWidth: 3,
+    style: LabelStyle.FILL_AND_OUTLINE,
+    verticalOrigin: VerticalOrigin.BOTTOM,
+    horizontalOrigin: HorizontalOrigin.LEFT,
+    pixelOffset: new Cartesian2(LABEL_PIXEL_OFFSET_X, LABEL_PIXEL_OFFSET_Y),
+    showBackground: true,
+    backgroundColor: Color.BLACK.withAlpha(0.55),
+    disableDepthTestDistance: Number.POSITIVE_INFINITY,
+    scaleByDistance: new NearFarScalar(
+      LABEL_SCALE_NEAR_DISTANCE,
+      LABEL_SCALE_NEAR_VALUE,
+      LABEL_SCALE_FAR_DISTANCE,
+      LABEL_SCALE_FAR_VALUE,
+    ),
+  });
+
   if (!handles.movingEntity) {
     handles.movingEntity = viewer.entities.add({
       position: handles.movingProperty,
@@ -418,14 +471,29 @@ export async function drawTrajectoryLOD(
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
       orientation: new VelocityOrientationProperty(handles.movingProperty),
+      label: movingLabel,
     });
   } else {
     handles.movingEntity.position = handles.movingProperty;
     handles.movingEntity.orientation = new VelocityOrientationProperty(
       handles.movingProperty,
     );
+    handles.movingEntity.label = movingLabel;
   }
 
+  const animationStopTime = JulianDate.addSeconds(
+    animationStartTime,
+    safeDuration,
+    new JulianDate(),
+  );
+
+  viewer.clock.startTime = animationStartTime.clone();
+  viewer.clock.stopTime = animationStopTime.clone();
+  viewer.clock.currentTime = animationStartTime.clone();
+
+  viewer.clock.clockRange = ClockRange.CLAMPED;
+  viewer.clock.multiplier = DEFAULT_SIMULATION_SPEED;
+  viewer.timeline.zoomTo(animationStartTime, animationStopTime);
   viewer.clock.shouldAnimate = true;
   viewer.trackedEntity = handles.movingEntity;
 

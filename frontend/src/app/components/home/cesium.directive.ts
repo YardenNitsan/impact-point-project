@@ -23,14 +23,14 @@ export class CesiumDirective implements AfterViewInit, OnDestroy {
   private buildings?: Cesium3DTileset;
 
   constructor(
-    private el: ElementRef<HTMLElement>,
+    private element: ElementRef<HTMLElement>,
     private manager: CesiumManager,
   ) {}
 
   async ngAfterViewInit() {
     Ion.defaultAccessToken = environment.cesium_public_token;
 
-    this.viewer = new Viewer(this.el.nativeElement, {
+    this.viewer = new Viewer(this.element.nativeElement, {
       timeline: true,
       animation: true,
       requestRenderMode: true,
@@ -54,7 +54,7 @@ export class CesiumDirective implements AfterViewInit, OnDestroy {
       this.viewer.scene.requestRender();
     });
 
-    this.resizeObserver.observe(this.el.nativeElement);
+    this.resizeObserver.observe(this.element.nativeElement);
 
     this.viewer.scene.requestRender();
   }

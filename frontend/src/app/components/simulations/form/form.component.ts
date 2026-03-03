@@ -3,26 +3,50 @@ import { Component, EventEmitter, Output } from '@angular/core';
 import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { environment } from '../../../../../environment';
 import { Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-form',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CommonModule],
   templateUrl: './form.component.html',
   styleUrl: './form.component.css',
 })
 export class FormComponent {
-  private loading = false;
+  loading = false;
+  success = false;
+  errorMsg = '';
 
   constructor(private http: HttpClient) {}
 
   trajectoryForm = new FormGroup({
-    mass: new FormControl('', [Validators.required]), // kg
-    speed: new FormControl('', [Validators.required]), // m/s
-    elevation: new FormControl('', [Validators.required]), // degrees
-    azimuth: new FormControl('', [Validators.required]), // degrees
+    mass: new FormControl('', [
+      Validators.required,
+      Validators.min(1),
+      Validators.max(5000),
+    ]), // kg
+    speed: new FormControl('', [
+      Validators.required,
+      Validators.min(1),
+      Validators.max(1200),
+    ]), // m/s
+    elevation: new FormControl('', [
+      Validators.required,
+      Validators.min(-35),
+      Validators.max(90),
+    ]), // degrees
+    azimuth: new FormControl('', [
+      Validators.required,
+      Validators.min(0),
+      Validators.max(360),
+    ]), // degrees
+    alt: new FormControl('', [
+      Validators.required,
+      Validators.min(0),
+      Validators.max(20000),
+    ]),
     lat: new FormControl('', [Validators.required]),
     lon: new FormControl('', [Validators.required]),
-    alt: new FormControl('', [Validators.required]),
   });
 
   isOpen: boolean = false;
@@ -33,12 +57,17 @@ export class FormComponent {
   @Output() isSubmitted = new EventEmitter<boolean>();
 
   submit() {
-    if (this.trajectoryForm.invalid) return;
+    if (this.trajectoryForm.invalid) {
+      this.trajectoryForm.markAllAsTouched();
+      return;
+    }
     if (this.loading) return;
+
     this.loading = true;
+    this.success = false;
+    this.errorMsg = '';
 
     const raw = this.trajectoryForm.value;
-
     const payload = {
       mass: Number(raw.mass),
       initialSpeed: Number(raw.speed),
@@ -49,21 +78,19 @@ export class FormComponent {
       alt: Number(raw.alt),
     };
 
-    console.log('Payload:', payload);
-
     this.http
       .post(environment.SIMULATION_REQUEST_URL, payload, {
         observe: 'response',
       })
+      .pipe(finalize(() => (this.loading = false))) // יורד תמיד כשהבקשה מסתיימת
       .subscribe({
-        next: (response) => {
-          console.log('Server Response', response);
+        next: () => {
+          this.success = true;
           this.isSubmitted.emit(true);
-          this.loading = false;
+          setTimeout(() => (this.success = false), 2500); // רק ההודעה נעלמת
         },
-        error: (err) => {
-          console.log('Error:', err);
-          this.loading = false;
+        error: () => {
+          this.errorMsg = 'Failed to send simulation. Please try again.';
         },
       });
   }

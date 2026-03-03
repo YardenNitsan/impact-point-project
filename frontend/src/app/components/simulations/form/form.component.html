@@ -5,40 +5,208 @@
     <div class="form-grid">
       <div class="row">
         <label>Altitude</label>
-        <input type="number" formControlName="alt" placeholder="Meters" />
+        <input
+          type="number"
+          formControlName="alt"
+          min="0"
+          max="20000"
+          placeholder="0 - 20000 m"
+        />
+        <div
+          class="error"
+          *ngIf="
+            trajectoryForm.get('alt')?.touched &&
+            trajectoryForm.get('alt')?.invalid
+          "
+        >
+          <span *ngIf="trajectoryForm.get('alt')?.errors?.['required']">
+            Altitude is required
+          </span>
+          <span
+            *ngIf="
+              trajectoryForm.get('alt')?.errors?.['min'] ||
+              trajectoryForm.get('alt')?.errors?.['max']
+            "
+          >
+            Altitude must be between 0 and 20,000 meters
+          </span>
+        </div>
       </div>
 
       <div class="row">
         <label>Azimuth (°)</label>
-        <input type="number" formControlName="azimuth" placeholder="0–360" />
+        <input
+          type="number"
+          formControlName="azimuth"
+          min="0"
+          max="360"
+          placeholder="0 - 360°"
+        />
+        <div
+          class="error"
+          *ngIf="
+            trajectoryForm.get('azimuth')?.touched &&
+            trajectoryForm.get('azimuth')?.invalid
+          "
+        >
+          <span *ngIf="trajectoryForm.get('azimuth')?.errors?.['required']">
+            Azimuth is required
+          </span>
+          <span
+            *ngIf="
+              trajectoryForm.get('azimuth')?.errors?.['min'] ||
+              trajectoryForm.get('azimuth')?.errors?.['max']
+            "
+          >
+            Azimuth must be between 0 and 360 degrees
+          </span>
+        </div>
       </div>
 
       <div class="row">
         <label>Elevation (°)</label>
-        <input type="number" formControlName="elevation" placeholder="0–90" />
+        <input
+          type="number"
+          formControlName="elevation"
+          min="-35"
+          max="90"
+          placeholder="-35 to 90°"
+        />
+        <div
+          class="error"
+          *ngIf="
+            trajectoryForm.get('elevation')?.touched &&
+            trajectoryForm.get('elevation')?.invalid
+          "
+        >
+          <span *ngIf="trajectoryForm.get('elevation')?.errors?.['required']">
+            Elevation is required
+          </span>
+          <span
+            *ngIf="
+              trajectoryForm.get('elevation')?.errors?.['min'] ||
+              trajectoryForm.get('elevation')?.errors?.['max']
+            "
+          >
+            Elevation must be between -35 and 90 degrees
+          </span>
+        </div>
       </div>
 
       <div class="row">
         <label>Latitude</label>
         <input type="number" formControlName="lat" placeholder="00.00" />
+        <div
+          class="error"
+          *ngIf="
+            trajectoryForm.get('lat')?.touched &&
+            trajectoryForm.get('lat')?.invalid
+          "
+        >
+          <span *ngIf="trajectoryForm.get('lat')?.errors?.['required']"
+            >Latitude is required</span
+          >
+        </div>
       </div>
 
       <div class="row">
         <label>Longitude</label>
         <input type="number" formControlName="lon" placeholder="00.00" />
+        <div
+          class="error"
+          *ngIf="
+            trajectoryForm.get('lon')?.touched &&
+            trajectoryForm.get('lon')?.invalid
+          "
+        >
+          <span *ngIf="trajectoryForm.get('lon')?.errors?.['required']"
+            >Longitude is required</span
+          >
+        </div>
       </div>
 
       <div class="row">
         <label>Mass (kg)</label>
-        <input type="number" formControlName="mass" placeholder="kg" />
+        <input
+          type="number"
+          formControlName="mass"
+          min="1"
+          max="5000"
+          placeholder="1 - 5000 kg"
+        />
+        <div
+          class="error"
+          *ngIf="
+            trajectoryForm.get('mass')?.touched &&
+            trajectoryForm.get('mass')?.invalid
+          "
+        >
+          <span *ngIf="trajectoryForm.get('mass')?.errors?.['required']">
+            Mass is required
+          </span>
+          <span
+            *ngIf="
+              trajectoryForm.get('mass')?.errors?.['min'] ||
+              trajectoryForm.get('mass')?.errors?.['max']
+            "
+          >
+            Mass must be between 1 and 5000 kg
+          </span>
+        </div>
       </div>
 
       <div class="row">
         <label>Initial Speed (m/s)</label>
-        <input type="number" formControlName="speed" placeholder="m/s" />
+        <input
+          type="number"
+          formControlName="speed"
+          min="1"
+          max="1200"
+          placeholder="1 - 1200 m/s"
+        />
+        <div
+          class="error"
+          *ngIf="
+            trajectoryForm.get('speed')?.touched &&
+            trajectoryForm.get('speed')?.invalid
+          "
+        >
+          <span *ngIf="trajectoryForm.get('speed')?.errors?.['required']">
+            Speed is required
+          </span>
+          <span
+            *ngIf="
+              trajectoryForm.get('speed')?.errors?.['min'] ||
+              trajectoryForm.get('speed')?.errors?.['max']
+            "
+          >
+            Speed must be between 1 and 1200 m/s
+          </span>
+        </div>
       </div>
     </div>
 
-    <button type="submit" class="send-btn">Create Simulation</button>
+    <button
+      type="submit"
+      class="send-btn"
+      [disabled]="loading || trajectoryForm.invalid"
+    >
+      <span *ngIf="!loading && !success">Create Simulation</span>
+
+      <span *ngIf="loading" class="btn-loading">
+        <span class="spinner"></span>
+        Sending...
+      </span>
+
+      <span *ngIf="success" class="btn-success"> Sent ✓ </span>
+    </button>
+
+    <div class="success-banner" *ngIf="success">
+      Simulation sent successfully
+    </div>
+
+    <div class="error-banner" *ngIf="errorMsg">
+      {{ errorMsg }}
+    </div>
   </form>
 </div>
