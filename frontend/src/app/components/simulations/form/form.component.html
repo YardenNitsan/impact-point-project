@@ -1,3 +1,4 @@
+<!-- FORM UI -->
 <div class="tool-panel">
   <form [formGroup]="trajectoryForm" (ngSubmit)="submit()">
     <h2 class="form-title">New Simulation</h2>
@@ -191,22 +192,43 @@
       class="send-btn"
       [disabled]="loading || trajectoryForm.invalid"
     >
-      <span *ngIf="!loading && !success">Create Simulation</span>
+      <span *ngIf="!loading">Create Simulation</span>
 
       <span *ngIf="loading" class="btn-loading">
         <span class="spinner"></span>
         Sending...
       </span>
-
-      <span *ngIf="success" class="btn-success"> Sent ✓ </span>
     </button>
-
-    <div class="success-banner" *ngIf="success">
-      Simulation sent successfully
-    </div>
 
     <div class="error-banner" *ngIf="errorMsg">
       {{ errorMsg }}
     </div>
   </form>
+</div>
+
+<!-- LOADING OVERLAY-->
+<div class="loading-overlay" *ngIf="isLoadingOverlay">
+  <div class="loader"></div>
+</div>
+
+<!-- SUCCESS MODAL-->
+<div
+  class="success-modal"
+  *ngIf="showSuccessModal"
+  (click)="closeSuccessModal()"
+>
+  <div class="success-box" (click)="$event.stopPropagation()">
+    <h2>Simulation Completed</h2>
+    <p>The trajectory was generated successfully.</p>
+
+    <div class="modal-actions">
+      <button type="button" class="close-btn" (click)="closeSuccessModal()">
+        Close
+      </button>
+
+      <button class="watch-btn" (click)="watchSimulation()">
+        Watch Simulation
+      </button>
+    </div>
+  </div>
 </div>

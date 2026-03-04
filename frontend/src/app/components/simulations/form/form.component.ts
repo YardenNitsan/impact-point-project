@@ -1,10 +1,18 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, EventEmitter, Output } from '@angular/core';
-import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormGroup,
+  FormControl,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { environment } from '../../../../../environment';
-import { Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { finalize } from 'rxjs/operators';
+import { Router } from '@angular/router';
+import { SharedService } from '../../services/shared.service';
+import { Coordinate } from '../../models/coordinate.model';
+import { SimulationHistoryService } from '../history/history-services/simulationHistory.service';
 
 @Component({
   selector: 'app-form',
@@ -13,11 +21,18 @@ import { finalize } from 'rxjs/operators';
   styleUrl: './form.component.css',
 })
 export class FormComponent {
+  isLoadingOverlay = false;
+  showSuccessModal = false;
   loading = false;
-  success = false;
   errorMsg = '';
+  simulationId?: string;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private shared: SharedService,
+    private router: Router,
+    private simulationService: SimulationHistoryService,
+  ) {}
 
   trajectoryForm = new FormGroup({
     mass: new FormControl('', [
@@ -49,11 +64,6 @@ export class FormComponent {
     lon: new FormControl('', [Validators.required]),
   });
 
-  isOpen: boolean = false;
-  toggle() {
-    this.isOpen = !this.isOpen;
-  }
-
   @Output() isSubmitted = new EventEmitter<boolean>();
 
   submit() {
@@ -64,34 +74,61 @@ export class FormComponent {
     if (this.loading) return;
 
     this.loading = true;
-    this.success = false;
+    this.isLoadingOverlay = true;
     this.errorMsg = '';
 
-    const raw = this.trajectoryForm.value;
+    const { mass, speed, elevation, azimuth, lat, lon, alt } =
+      this.trajectoryForm.value;
     const payload = {
-      mass: Number(raw.mass),
-      initialSpeed: Number(raw.speed),
-      elevation: Number(raw.elevation),
-      azimuth: Number(raw.azimuth),
-      lat: Number(raw.lat),
-      lon: Number(raw.lon),
-      alt: Number(raw.alt),
+      mass: Number(mass),
+      initialSpeed: Number(speed),
+      elevation: Number(elevation),
+      azimuth: Number(azimuth),
+      lat: Number(lat),
+      lon: Number(lon),
+      alt: Number(alt),
     };
 
     this.http
       .post(environment.SIMULATION_REQUEST_URL, payload, {
         observe: 'response',
       })
-      .pipe(finalize(() => (this.loading = false))) // יורד תמיד כשהבקשה מסתיימת
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.isLoadingOverlay = false;
+        }),
+      )
       .subscribe({
-        next: () => {
-          this.success = true;
+        next: (response) => {
+          console.log('Server Response', response);
+          this.simulationId = (response.body as any)?.resultId;
+
+          this.showSuccessModal = true;
+
           this.isSubmitted.emit(true);
-          setTimeout(() => (this.success = false), 2500); // רק ההודעה נעלמת
         },
         error: () => {
           this.errorMsg = 'Failed to send simulation. Please try again.';
         },
       });
+  }
+
+  watchSimulation() {
+    if (!this.simulationId) return;
+
+    this.simulationService.watchSimulation(this.simulationId).subscribe({
+      next: (coords: Coordinate[]) => {
+        this.shared.setData(coords);
+        this.router.navigateByUrl('/');
+      },
+      error: () => alert('load failed'),
+    });
+  }
+  closeSuccessModal() {
+    this.showSuccessModal = false;
+    this.trajectoryForm.reset();
+    this.trajectoryForm.markAsPristine();
+    this.trajectoryForm.markAsUntouched();
   }
 }
