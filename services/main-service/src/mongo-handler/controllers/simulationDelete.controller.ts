@@ -10,7 +10,7 @@ export const deleteSimulation = async (req: Request, res: Response) => {
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
-        message: "Invalid id"
+        message: "Invalid id",
       });
     }
 
@@ -18,28 +18,25 @@ export const deleteSimulation = async (req: Request, res: Response) => {
 
     if (!result) {
       return res.status(404).json({
-        message: "Simulation not found"
+        message: "Simulation not found",
       });
     }
 
     await SimulationResult.findByIdAndDelete(id);
 
     if (result.simulationInputId) {
-      await SimulationInput.findByIdAndDelete(
-        result.simulationInputId
-      );
+      await SimulationInput.findByIdAndDelete(result.simulationInputId);
     }
 
     res.json({
-      message: "Simulation deleted successfully"
+      message: "Simulation deleted successfully",
     });
-
   } catch (error: any) {
     console.error("Delete error:", error);
 
     res.status(500).json({
       message: "Delete failed",
-      error: error.message
+      error: error.message,
     });
   }
 };

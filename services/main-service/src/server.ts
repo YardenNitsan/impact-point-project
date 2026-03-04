@@ -1,23 +1,25 @@
-import 'dotenv/config'
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import router from './mongo-handler/routes/mongo.route';
-import { errorHandler } from './middlewares/error-handler';
-import mongoose from 'mongoose';
+import router from "./mongo-handler/routes/mongo.route";
+import { errorHandler } from "./middlewares/error-handler";
+import mongoose from "mongoose";
+import { environmentService } from "./environment";
 
-
-const ALLOWED_ORIGIN="http://localhost:4200";
-const PORT=3000;
-const MONGO_URI = "mongodb://localhost:27017/impact-point";
+const ALLOWED_ORIGIN = environmentService.ALLOWED_ORIGIN;
+const PORT = environmentService.NODE_PORT;
+const MONGO_URI = environmentService.MONGO_URI;
 
 const app = express();
-app.use(cors({
-  origin: ALLOWED_ORIGIN,
-  methods:["GET", "POST", "DELETE"],
+app.use(
+  cors({
+    origin: ALLOWED_ORIGIN,
+    methods: ["GET", "POST", "DELETE"],
 
-  // to allow json only
-  allowHeaders: ["Content-Type"]
-}));
+    // to allow json only
+    allowHeaders: ["Content-Type"],
+  }),
+);
 app.use(express.json());
 
 mongoose
@@ -32,7 +34,6 @@ app.use((req, res, next) => {
   console.log("REQ:", req.method, req.url);
   next();
 });
-
 
 app.use("/api/simulation", router);
 

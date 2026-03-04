@@ -6,5 +6,5 @@ export const coordinateSchema = new mongoose.Schema(
     lat: { type: Number, required: true },
     alt: { type: Number, required: true },
   },
-  { _id: false }
+  { _id: false },
 );

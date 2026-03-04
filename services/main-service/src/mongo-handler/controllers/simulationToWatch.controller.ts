@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
 import { SimulationResult } from "../models/simulationResult.model";
 
-export const getSimulationToWatch = async (
-  req: Request,
-  res: Response
-) => {
+export const getSimulationToWatch = async (req: Request, res: Response) => {
   try {
     const sim = await SimulationResult.findById(req.params.id);
 

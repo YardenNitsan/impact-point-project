@@ -13,7 +13,6 @@ export interface SimulationResultDocument extends mongoose.Document {
   createdAt: Date;
 }
 
-
 const SimulationResultSchema = new mongoose.Schema(
   {
     simulationInputId: {
@@ -27,15 +26,14 @@ const SimulationResultSchema = new mongoose.Schema(
       default: [],
     },
     durationSeconds: {
-    type: Number,
-    required: true
+      type: Number,
+      required: true,
     },
   },
-  defaultSchemaOptions
+  defaultSchemaOptions,
 );
 
-export const SimulationResult =
-  mongoose.model<SimulationResultDocument>(
-    "SimulationResult",
-    SimulationResultSchema
-  );
+export const SimulationResult = mongoose.model<SimulationResultDocument>(
+  "SimulationResult",
+  SimulationResultSchema,
+);

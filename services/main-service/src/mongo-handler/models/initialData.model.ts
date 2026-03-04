@@ -20,5 +20,5 @@ export const initialDataSchema = new mongoose.Schema<InitialData>(
     mass: { type: Number, required: true },
     initialSpeed: { type: Number, required: true },
   },
-  { _id: false }
+  { _id: false },
 );
