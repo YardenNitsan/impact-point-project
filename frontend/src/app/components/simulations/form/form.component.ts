@@ -60,8 +60,16 @@ export class FormComponent {
       Validators.min(0),
       Validators.max(20000),
     ]),
-    lat: new FormControl('', [Validators.required]),
-    lon: new FormControl('', [Validators.required]),
+    lat: new FormControl('', [
+      Validators.required,
+      Validators.min(-90),
+      Validators.max(90),
+    ]),
+    lon: new FormControl('', [
+      Validators.required,
+      Validators.min(-180),
+      Validators.max(180),
+    ]),
   });
 
   @Output() isSubmitted = new EventEmitter<boolean>();

@@ -96,7 +96,13 @@
 
       <div class="row">
         <label>Latitude</label>
-        <input type="number" formControlName="lat" placeholder="00.00" />
+        <input
+          type="number"
+          formControlName="lat"
+          min="-90"
+          max="90"
+          placeholder="-90 to 90°"
+        />
         <div
           class="error"
           *ngIf="
@@ -104,15 +110,29 @@
             trajectoryForm.get('lat')?.invalid
           "
         >
-          <span *ngIf="trajectoryForm.get('lat')?.errors?.['required']"
-            >Latitude is required</span
+          <span *ngIf="trajectoryForm.get('lat')?.errors?.['required']">
+            Latitude is required
+          </span>
+          <span
+            *ngIf="
+              trajectoryForm.get('lat')?.errors?.['min'] ||
+              trajectoryForm.get('lat')?.errors?.['max']
+            "
           >
+            Latitude must be between -90 and 90 degrees
+          </span>
         </div>
       </div>
 
       <div class="row">
         <label>Longitude</label>
-        <input type="number" formControlName="lon" placeholder="00.00" />
+        <input
+          type="number"
+          formControlName="lon"
+          min="-180"
+          max="180"
+          placeholder="-180 to 180°"
+        />
         <div
           class="error"
           *ngIf="
@@ -120,9 +140,17 @@
             trajectoryForm.get('lon')?.invalid
           "
         >
-          <span *ngIf="trajectoryForm.get('lon')?.errors?.['required']"
-            >Longitude is required</span
+          <span *ngIf="trajectoryForm.get('lon')?.errors?.['required']">
+            Longitude is required
+          </span>
+          <span
+            *ngIf="
+              trajectoryForm.get('lon')?.errors?.['min'] ||
+              trajectoryForm.get('lon')?.errors?.['max']
+            "
           >
+            Longitude must be between -180 and 180 degrees
+          </span>
         </div>
       </div>
 
