@@ -10,11 +10,6 @@ build/
 frontend/src/assets/cesium/
 frontend/public/cesium/
 
-# environment files
-services/*/src/environment.ts
-frontend/environment.ts
-
-
 # Logs
 npm-debug.log*
 yarn-error.log*
