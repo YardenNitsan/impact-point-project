@@ -1,5 +1,4 @@
 import {
-  ArcType,
   CallbackProperty,
   Cartesian3,
   Cartographic,
@@ -8,7 +7,7 @@ import {
   ExtrapolationType,
   HeightReference,
   JulianDate,
-  LagrangePolynomialApproximation,
+  LinearApproximation,
   SampledPositionProperty,
   VelocityOrientationProperty,
   Viewer,
@@ -29,14 +28,10 @@ import { Coordinate } from '../../models/coordinate.model';
    Performance constants
    ========================= */
 
-const TERRAIN_ALTITUDE_OFFSET_METERS = 3;
-
 const POLYLINE_ALPHA = 0.95;
 const MOVING_POINT_PIXEL_SIZE = 12;
 
-const INTERPOLATION_DEGREE = 1;
-
-const MAX_TERRAIN_SAMPLES = 1200;
+const MAX_TERRAIN_SAMPLES = 300;
 const MAX_ANIMATION_SAMPLES = 2500;
 
 // safe duration seconds
@@ -47,8 +42,8 @@ const CAMERA_HEIGHT_LOD_MEDIUM_METERS = 50_000;
 const CAMERA_HEIGHT_LOD_FAR_METERS = 200_000;
 
 // Polyline max points by LOD
-const MAX_POLYLINE_POINTS_LOD_NEAR = 500;
-const MAX_POLYLINE_POINTS_LOD_MEDIUM = 300;
+const MAX_POLYLINE_POINTS_LOD_NEAR = 300;
+const MAX_POLYLINE_POINTS_LOD_MEDIUM = 200;
 const MAX_POLYLINE_POINTS_LOD_FAR = 120;
 
 // Polyline width by LOD
@@ -72,7 +67,7 @@ const LABEL_PIXEL_OFFSET_Y = -12;
    Terrain cache
    ========================= */
 
-const TERRAIN_CACHE_MAX_KEYS = 8;
+const TERRAIN_CACHE_MAX_KEYS = 32;
 const terrainCache = new Map<string, number[]>();
 
 function terrainCacheGet(key: string): number[] | undefined {
@@ -122,10 +117,6 @@ export type TrajectoryLODHandles = {
 /* =========================
    Helpers
    ========================= */
-
-function altitudeWithOffsetMeters(alt: number) {
-  return Math.max(0, (alt ?? 0) + TERRAIN_ALTITUDE_OFFSET_METERS);
-}
 
 function buildTrajectoryKey(points: Coordinate[]): string {
   const totalPoints = points.length;
@@ -342,11 +333,12 @@ export async function drawTrajectoryLOD(
   );
 
   // full positions
-  const fullTrajectoryPositions = new Array<Cartesian3>(rawPoints.length);
+  const fullTrajectoryPositions: Cartesian3[] = [];
+  fullTrajectoryPositions.length = rawPoints.length;
   for (let i = 0; i < rawPoints.length; i++) {
     const point = rawPoints[i];
-    const height =
-      altitudeWithOffsetMeters(point.alt) + (terrainHeightsMeters[i] ?? 0);
+    const terrain = terrainHeightsMeters[i] ?? 0;
+    const height = terrain + (point.alt ?? 0);
     fullTrajectoryPositions[i] = Cartesian3.fromDegrees(
       point.lon,
       point.lat,
@@ -378,7 +370,6 @@ export async function drawTrajectoryLOD(
         positions: handles.polylinePositionsCallback,
         width: handles.polylineWidthCallback,
         material: Color.CYAN.withAlpha(POLYLINE_ALPHA),
-        arcType: ArcType.GEODESIC,
       },
     });
   }
@@ -389,8 +380,7 @@ export async function drawTrajectoryLOD(
   // moving entity
   handles.movingProperty = new SampledPositionProperty();
   handles.movingProperty.setInterpolationOptions({
-    interpolationAlgorithm: LagrangePolynomialApproximation,
-    interpolationDegree: INTERPOLATION_DEGREE,
+    interpolationAlgorithm: LinearApproximation,
   });
   handles.movingProperty.forwardExtrapolationType = ExtrapolationType.HOLD;
   handles.movingProperty.backwardExtrapolationType = ExtrapolationType.HOLD;
@@ -402,7 +392,6 @@ export async function drawTrajectoryLOD(
   );
 
   const animationStartTime = JulianDate.fromDate(new Date(0));
-  if (totalTrajectoryPoints < 2) return handles;
 
   const secondsPerSample =
     safeDuration / Math.max(1, totalTrajectoryPoints - 1);
@@ -435,7 +424,8 @@ export async function drawTrajectoryLOD(
     const carto = Cartographic.fromCartesian(pos);
     const lat = CesiumMath.toDegrees(carto.latitude);
     const lon = CesiumMath.toDegrees(carto.longitude);
-    const alt = carto.height;
+    const terrain = viewer.scene.globe.getHeight(carto) ?? 0;
+    const alt = carto.height - terrain;
 
     return `lat: ${lat.toFixed(6)}\nlon: ${lon.toFixed(6)}\nalt: ${alt.toFixed(1)} m`;
   }, false);
@@ -497,6 +487,6 @@ export async function drawTrajectoryLOD(
   viewer.clock.shouldAnimate = true;
   viewer.trackedEntity = handles.movingEntity;
 
-  viewer.scene.requestRender();
+  viewer.scene.requestRenderMode && viewer.scene.requestRender();
   return handles;
 }
