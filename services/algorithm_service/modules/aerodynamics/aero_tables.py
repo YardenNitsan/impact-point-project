@@ -326,8 +326,8 @@ def build_hoerner_style_table_360(
 # Default demo configuration
 # ============================================================
 
-DEFAULT_ALPHA_GRID = [math.radians(a) for a in range(-180, 181, 5)]
-DEFAULT_MACH_GRID = [0.0, 0.3, 0.6, 0.9]
+DEFAULT_ALPHA_GRID = [math.radians(a) for a in range(-180, 181, 1)]
+DEFAULT_MACH_GRID = [0.0, 0.3, 0.6, 0.9, 1.2, 1.6, 2.0, 3.0, 4.0]
 
 
 def default_demo_table() -> AeroTable2D:

@@ -105,7 +105,7 @@ Used only for distance estimation in downsampling (flat approximation).
 # Simulation configuration constants
 # ============================================================
 
-DEFAULT_TIME_STEP_S: float = 0.01
+DEFAULT_TIME_STEP_S: float = 0.001
 """Integrator time step [s]."""
 
 DEFAULT_MAX_SIM_TIME_S: float = 800.0
@@ -198,6 +198,31 @@ def normalize_launch_angles(
 # ============================================================
 # Trajectory downsampling
 # ============================================================
+def downsample_states_by_dx(
+    states: List[State3DOF],
+    dx_min_m: float,
+) -> List[State3DOF]:
+    """
+    Downsample solver states by keeping points at least dx_min_m apart in downrange (x).
+    This avoids lat/lon approximations and produces smooth spacing for Cesium.
+    """
+    if len(states) < 2:
+        return states
+
+    out: List[State3DOF] = [states[0]]
+    last_x = float(states[0].x)
+
+    for s in states[1:]:
+        x = float(s.x)
+        if (x - last_x) >= dx_min_m:
+            out.append(s)
+            last_x = x
+
+    # always keep last point
+    if out[-1] is not states[-1]:
+        out.append(states[-1])
+
+    return out
 
 def downsample_by_distance(
     trajectory: List[TrajectoryPoint],
@@ -324,11 +349,15 @@ def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
         center_of_gravity_offset_m=DEFAULT_CENTER_OF_GRAVITY_OFFSET,
     )
 
-    impact = compute_impact_from_trajectory(trajectory)
+    raw_trajectory = trajectory
+    raw_points = len(raw_trajectory)
+
+    impact = compute_impact_from_trajectory(raw_trajectory)
     if impact is None:
         raise RuntimeError("No ground impact detected (trajectory did not cross z=0).")
-
     impact_state = impact.state_at_impact
+
+    trajectory_vis = downsample_states_by_dx(raw_trajectory, dx_min_m=2.0)
 
     # Convert solver x (downrange) into ENU east/north displacement and then lat/lon.
     trajectory_path: List[TrajectoryPoint] = []
@@ -336,7 +365,7 @@ def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
     sin_az = math.sin(azimuth_rad)
     cos_az = math.cos(azimuth_rad)
 
-    for s in trajectory:
+    for s in trajectory_vis:
         east_m = s.x * sin_az
         north_m = s.x * cos_az
 
@@ -379,13 +408,12 @@ def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
         }
     )
 
-    trajectory_path = adaptive_downsample(
-        trajectory_path,
-        DEFAULT_TARGET_TRAJECTORY_POINTS,
-    )
+    # trajectory_path = adaptive_downsample(
+    #     trajectory_path,
+    #     DEFAULT_TARGET_TRAJECTORY_POINTS,
+    # )
 
-    physical_time_s = DEFAULT_TIME_STEP_S * (len(trajectory) - 1)
-
+    physical_time_s = DEFAULT_TIME_STEP_S * (raw_points - 1)
     return {
         "impact": {
             "lat": impact_lat,
@@ -398,7 +426,7 @@ def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
         "trajectory": trajectory_path,
         "physical_time": physical_time_s,
         "points_count": len(trajectory_path),
-        "raw_points_count": len(trajectory),
+        "raw_points_count": raw_points,
         "environment": {
             "source": env.data_source,
             "note": env.diagnostic_note,

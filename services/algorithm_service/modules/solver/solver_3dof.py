@@ -161,14 +161,15 @@ def derivatives(
     alpha_rad = wrap_to_pi(theta_rad - flight_path_angle_rad)
     mach_number = airspeed_mps / a_sound
 
+    # clamp mach to table limits if available
+    if hasattr(aero_table, "mach_min") and hasattr(aero_table, "mach_max"):
+        mach_number = max(aero_table.mach_min, min(aero_table.mach_max, mach_number))
+
     # ========================================================
     # Aerodynamic forces & moments
     # ========================================================
 
     coeffs = aero_table.lookup(alpha_rad, mach_number)
-
-    if altitude_m < 200.0:  # כדי לא להציף את הטרמינל יותר מדי
-        print(f"alpha={alpha_rad:+.3f} rad, Mach={mach_number:.2f}, coeffs={coeffs}")
 
     force_x_N, force_z_N, moment_y_Nm, _, _ = compute_aerodynamic_loads_from_lookup_table(
         static_pressure=pressure_Pa,
