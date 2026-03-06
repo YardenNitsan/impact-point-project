@@ -287,7 +287,10 @@ def adaptive_downsample(
 # Main simulation entry point
 # ============================================================
 
-def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
+def simulate_impact(
+    initial_conditions: SimulationInput,
+    environment_override=None
+) -> SimulationOutput:
     """
     Run one full 3DOF simulation and return impact + Cesium-ready trajectory.
     """
@@ -318,7 +321,10 @@ def simulate_impact(initial_conditions: SimulationInput) -> SimulationOutput:
     )
 
     # Environment (real-time API with ISA fallback).
-    env = fetch_environmental_conditions(launch_lat_deg, launch_lon_deg)
+    if environment_override is not None:
+        env = environment_override
+    else:
+        env = fetch_environmental_conditions(launch_lat_deg, launch_lon_deg)
 
     # Wind model projected onto the trajectory axis (along-track).
     wind_model = AlongTrackWindShearModel(
