@@ -24,6 +24,10 @@ class SimulationInput(BaseModel):
     lon: float
     mass: float
     initialSpeed: float
+    T0_K: float | None = None
+    P0_Pa: float | None = None
+    wind_x: float | None = None
+    wind_z: float | None = None
 
 # ===============================
 # Health Check

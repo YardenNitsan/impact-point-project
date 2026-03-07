@@ -7,13 +7,18 @@ import math
 # ============================================================
 
 RANGES = {
+    "latitude": (-90, 90),          # degrees
+    "longitude": (-180, 180),       # degrees
+
     "altitude": (0, 20000),       # meters
     "speed": (1, 1200),         # m/s
     "azimuth": (0, 360),         # degrees
     "elevation": (-35, 85),      # degrees
     "mass": (1, 5000),            # kg
+
     "T0": (200, 320),            # Kelvin
     "P0": (5000, 110000),       # Pascal
+
     "wind_x": (-100, 100),         # m/s
     "wind_z": (-20, 20)          # m/s
 }
@@ -79,10 +84,11 @@ def generate_samples(n_samples: int):
 # test run
 # ============================================================
 
-samples = generate_samples(20)
+if __name__ == "__main__":
 
-for i, s in enumerate(samples):
+    samples = generate_samples(20)
 
-    print(f"\nSample {i+1}")
-    for k, v in s.items():
-        print(f"{k:12s}: {v:.4f}")
+    for i, s in enumerate(samples):
+        print(f"\nSample {i+1}")
+        for k, v in s.items():
+            print(f"{k:12s}: {v:.4f}")

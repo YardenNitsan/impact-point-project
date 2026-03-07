@@ -31,7 +31,7 @@ Earth approximation (sufficient for short ranges; not a full geodesic).
 from __future__ import annotations
 
 import math
-from typing import Dict, List, TypedDict
+from typing import Dict, List, TypedDict, NotRequired
 
 from modules.state.state import State3DOF
 from modules.solver.run_simulation import run_simulation
@@ -48,19 +48,20 @@ from modules.aerodynamics.aerodynamics import AeroRef
 # Typed I/O schemas (professional clarity)
 # ============================================================
 
-class SimulationInput(TypedDict):
-    """
-    Input parameters for a single simulation case.
 
-    All angles are provided in DEGREES (UI-friendly).
-    """
+class SimulationInput(TypedDict):
     lat: float
     lon: float
     alt: float
-    azimuth: float          # degrees (0=N, 90=E)
-    elevation: float        # degrees (positive up)
-    mass: float             # kg
-    initialSpeed: float     # m/s
+    azimuth: float
+    elevation: float
+    mass: float
+    initialSpeed: float
+
+    T0_K: NotRequired[float]
+    P0_Pa: NotRequired[float]
+    wind_x: NotRequired[float]
+    wind_z: NotRequired[float]
 
 
 class TrajectoryPoint(TypedDict):
@@ -320,9 +321,31 @@ def simulate_impact(
         q=0.0,
     )
 
-    # Environment (real-time API with ISA fallback).
-    if environment_override is not None:
-        env = environment_override
+    # Environment (external override or API)
+
+    if (
+        "T0_K" in initial_conditions and
+        "P0_Pa" in initial_conditions and
+        "wind_x" in initial_conditions and
+        "wind_z" in initial_conditions
+    ):
+
+        class EnvOverride:
+            def __init__(self):
+                self.sea_level_temperature_K = initial_conditions["T0_K"]
+                self.sea_level_pressure_Pa = initial_conditions["P0_Pa"]
+
+                self.wind_east_10m_mps = initial_conditions["wind_x"]
+                self.wind_north_10m_mps = initial_conditions["wind_z"]
+
+                self.wind_east_100m_mps = initial_conditions["wind_x"]
+                self.wind_north_100m_mps = initial_conditions["wind_z"]
+
+                self.data_source = "dataset"
+                self.diagnostic_note = "environment override"
+
+        env = EnvOverride()
+
     else:
         env = fetch_environmental_conditions(launch_lat_deg, launch_lon_deg)
 
