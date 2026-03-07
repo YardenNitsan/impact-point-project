@@ -104,7 +104,7 @@ function Start-Services {
         $processes | ConvertTo-Json | Set-Content $pidFile
 
         Write-Host ""
-        Write-Host "🚀 All services started."
+        Write-Host "All services started successfully!"
 
     }
     catch {
