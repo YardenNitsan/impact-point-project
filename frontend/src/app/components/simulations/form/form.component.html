@@ -9,9 +9,9 @@
         <input
           type="number"
           formControlName="alt"
-          min="0"
+          min="1"
           max="20000"
-          placeholder="0 - 20000 m"
+          placeholder="1 - 20,000 m"
         />
         <div
           class="error"
@@ -29,7 +29,7 @@
               trajectoryForm.get('alt')?.errors?.['max']
             "
           >
-            Altitude must be between 0 and 20,000 meters
+            Altitude must be between 1 and 20,000 meters
           </span>
         </div>
       </div>
@@ -70,8 +70,8 @@
           type="number"
           formControlName="elevation"
           min="-35"
-          max="90"
-          placeholder="-35 to 90°"
+          max="85"
+          placeholder="-35 to 85°"
         />
         <div
           class="error"
@@ -89,7 +89,7 @@
               trajectoryForm.get('elevation')?.errors?.['max']
             "
           >
-            Elevation must be between -35 and 90 degrees
+            Elevation must be between -35 and 85 degrees
           </span>
         </div>
       </div>

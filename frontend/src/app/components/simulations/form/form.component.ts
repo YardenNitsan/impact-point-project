@@ -48,7 +48,7 @@ export class FormComponent {
     elevation: new FormControl('', [
       Validators.required,
       Validators.min(-35),
-      Validators.max(90),
+      Validators.max(85),
     ]), // degrees
     azimuth: new FormControl('', [
       Validators.required,
@@ -57,7 +57,7 @@ export class FormComponent {
     ]), // degrees
     alt: new FormControl('', [
       Validators.required,
-      Validators.min(0),
+      Validators.min(1),
       Validators.max(20000),
     ]),
     lat: new FormControl('', [
