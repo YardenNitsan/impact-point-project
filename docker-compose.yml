@@ -1,20 +1,20 @@
-version: "3.9"
-
 services:
   mongo:
     image: mongo
     container_name: impactpoint-mongo
+    profiles: ["api", "dataset"]
     ports:
       - "27017:27017"
 
   algorithm:
     build: ./services/algorithm_service
     container_name: algorithm-service
+    profiles: ["api"]
     ports:
       - "8000:8000"
     environment:
       - SERVICE_MODE=api
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 14
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
 
   algorithm-dataset:
     build: ./services/algorithm_service
@@ -30,6 +30,7 @@ services:
     build: ./services/main-service
     ports:
       - "3000:3000"
+    profiles: ["api"]
     env_file:
       - ./services/main-service/.env
     depends_on:
@@ -40,5 +41,6 @@ services:
     build: ./frontend
     ports:
       - "4200:4200"
+    profiles: ["api"]
     depends_on:
       - main
