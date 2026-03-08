@@ -25,3 +25,9 @@ Thumbs.db
 # Python (global ignore)
 **/__pycache__/
 *.py[cod]
+
+# dev folder
+.dev/ 
+
+#environment files
+.env

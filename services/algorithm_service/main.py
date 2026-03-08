@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import time
+import os
 
 # Import your algorithm
 from modules.impact.simulated_impact import simulate_impact
@@ -12,6 +13,8 @@ app = FastAPI(
     title="Impact Simulation API",
     version="1.0.0"
 )
+
+request_counter = 0
 
 # ===============================
 # Request Model
@@ -41,6 +44,21 @@ def health_check():
 # ===============================
 @app.post("/simulate-impact")
 def simulate(input: SimulationInput):
+
+    print("================================")
+    print(f"START PID {os.getpid()} time {time.time()}")
+    print("================================")
+
+    global request_counter
+    request_counter += 1
+
+    worker_pid = os.getpid()
+
+    print("\n==============================")
+    print(f"Worker PID: {worker_pid}")
+    print(f"Request number: {request_counter}")
+    print("Simulation request received")
+
     start_time = time.time()
 
     try:
@@ -53,11 +71,15 @@ def simulate(input: SimulationInput):
 
         duration = time.time() - start_time
 
-        print("\nSimulation completed")
+        print(f"\nSimulation completed by worker PID: {worker_pid}")
         print(f"Runtime: {duration:.3f} seconds")
 
         if isinstance(result, dict) and "trajectory" in result:
             print(f"Trajectory points: {len(result['trajectory'])}")
+        
+        print("================================")
+        print(f"END PID {os.getpid()} time {time.time()}")
+        print("================================")
 
         return result
 

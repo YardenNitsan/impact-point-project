@@ -324,10 +324,10 @@ def simulate_impact(
     # Environment (external override or API)
 
     if (
-        "T0_K" in initial_conditions and
-        "P0_Pa" in initial_conditions and
-        "wind_x" in initial_conditions and
-        "wind_z" in initial_conditions
+        initial_conditions.get("T0_K") is not None and
+        initial_conditions.get("P0_Pa") is not None and
+        initial_conditions.get("wind_x") is not None and
+        initial_conditions.get("wind_z") is not None
     ):
 
         class EnvOverride:
