@@ -86,7 +86,7 @@ def generate_samples(n_samples: int):
 
 if __name__ == "__main__":
 
-    samples = generate_samples(20)
+    samples = generate_samples(100)
 
     for i, s in enumerate(samples):
         print(f"\nSample {i+1}")

@@ -1,10 +1,17 @@
 services:
   mongo:
     image: mongo
-    container_name: impactpoint-mongo
-    profiles: ["api", "dataset"]
+    container_name: main-service-mongo
+    profiles: ["api"]
     ports:
       - "27017:27017"
+
+  mongo-dataset:
+    image: mongo
+    container_name: dataset-mongo
+    profiles: ["dataset"]
+    ports:
+      - "27018:27017"
 
   algorithm:
     build: ./services/algorithm_service
@@ -24,7 +31,7 @@ services:
       - "8001:8000"
     environment:
       - SERVICE_MODE=dataset
-    command: uvicorn main:app --host 0.0.0.0 --port 8001 --workers 14
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 14
 
   main:
     build: ./services/main-service
