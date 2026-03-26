@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+numpy
+xarray
+netCDF4
+pydantic

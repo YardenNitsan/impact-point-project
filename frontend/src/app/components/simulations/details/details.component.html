@@ -1,0 +1,57 @@
+<div class="details-wrapper" *ngIf="!loading">
+  <h2 class="details-title">Simulation Details</h2>
+
+  <div class="top-info">
+    <div class="info-box">
+      <span>Date</span>
+      {{ details.createdAt | date: "yyyy-MM-dd HH:mm" }}
+    </div>
+    <div class="info-box">
+      <span>Duration</span>
+      {{ formattedDuration }} minutes
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <div class="section">
+      <h3>Initial Conditions</h3>
+      <div class="grid">
+        <div class="card">
+          Altitude<br /><b>{{ details.initialData.alt }}</b>
+        </div>
+        <div class="card">
+          Azimuth<br /><b>{{ details.initialData.azimuth }}</b>
+        </div>
+        <div class="card">
+          Elevation<br /><b>{{ details.initialData.elevation }}</b>
+        </div>
+        <div class="card">
+          Latitude<br /><b>{{ details.initialData.lat }}</b>
+        </div>
+        <div class="card">
+          Longitude<br /><b>{{ details.initialData.lon }}</b>
+        </div>
+        <div class="card">
+          Mass<br /><b>{{ details.initialData.mass }} kg</b>
+        </div>
+        <div class="card">
+          Initial Speed<br /><b>{{ details.initialData.initialSpeed }} m/s</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Simulation Results</h3>
+
+      <div class="results">
+        <div class="results-scroll">
+          <div *ngFor="let c of details.coordinates; index as i">
+            {{ i + 1 }} → Lon: {{ c.lon }}, Lat: {{ c.lat }}, Alt: {{ c.alt }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="back-btn" (click)="back.emit()">Back</button>
+</div>

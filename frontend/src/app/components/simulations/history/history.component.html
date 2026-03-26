@@ -1,0 +1,14 @@
+<div class="history-container">
+  <div class="history-card" *ngFor="let sim of simulations">
+    <div class="info">
+      <div>Date: {{ sim.createdAt | date: "yyyy-MM-dd" }}</div>
+      <div>Amount of time: {{ sim.formattedDuration }} minutes</div>
+    </div>
+
+    <div class="actions">
+      <button (click)="details(sim.id)" class="details-btn">Details</button>
+      <button (click)="deleteSim(sim.id)" class="delete-btn">Delete</button>
+      <button (click)="watchSim(sim.id)" class="watch-btn">Watch</button>
+    </div>
+  </div>
+</div>

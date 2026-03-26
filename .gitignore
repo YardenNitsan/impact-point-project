@@ -1,0 +1,89 @@
+# =========================
+# OS / IDE
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+**/.idea/
+
+# =========================
+# Python
+# =========================
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+venv/
+**/.venv/
+**/venv/
+
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# =========================
+# Node / Angular
+# =========================
+node_modules/
+**/node_modules/
+.angular/
+dist/
+build/
+
+# =========================
+# Logs
+# =========================
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# =========================
+# Environment files
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Large data / weather files
+# =========================
+data/
+*.nc
+*.grib
+*.grb
+*.grib2
+
+# =========================
+# Keep frontend assets
+# =========================
+# do NOT ignore frontend/src/assets because your PNG files are part of the app
+
+# Cesium huge files
+frontend/src/assets/cesium/
+frontend/public/cesium/
+
+# =========================
+# Dev-only folders
+# =========================
+.dev/
+
+# =========================
+# Scripts
+# =========================
+# Keep scripts code, ignore only virtualenvs inside scripts
+scripts/.venv/
+scripts/venv/
+
+# =========================
+# Optional generated files
+# =========================
+frontend/src/app.zip
+
+# =========================
+# ML generated files
+# =========================
+services/ML_service/dataset.jsonl

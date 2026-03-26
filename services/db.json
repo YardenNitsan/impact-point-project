@@ -1,0 +1,233 @@
+[
+  {
+    "id": 1,
+    "initialData": {
+      "alt": 3445,
+      "azimuth": 234,
+      "elevation": 3434,
+      "lat": 32.0853,
+      "lon": 34.7818,
+      "mass": 324,
+      "initialSpeed": 3245
+    },
+    "coordinates": [
+      { "lon": 34.781900, "lat": 32.085500, "alt": 180 },
+      { "lon": 34.782300, "lat": 32.084900, "alt": 165 },
+      { "lon": 34.783000, "lat": 32.084200, "alt": 150 },
+      { "lon": 34.783600, "lat": 32.083600, "alt": 130 }
+    ],
+    "time": {
+      "hour": "09:40:45",
+      "date": "2026-01-10",
+      "amount_of_time": "01:25"
+    }
+  },
+  {
+    "id": 2,
+    "initialData": {
+      "alt": 3500,
+      "azimuth": 210,
+      "elevation": 3300,
+      "lat": 32.0721,
+      "lon": 34.7905,
+      "mass": 300,
+      "initialSpeed": 3100
+    },
+    "coordinates": [
+      { "lon": 34.790700, "lat": 32.072500, "alt": 200 },
+      { "lon": 34.791200, "lat": 32.071800, "alt": 175 },
+      { "lon": 34.791900, "lat": 32.071100, "alt": 150 },
+      { "lon": 34.792400, "lat": 32.070400, "alt": 120 }
+    ],
+    "time": {
+      "hour": "09:22:30",
+      "date": "2026-01-11",
+      "amount_of_time": "02:25"
+    }
+  },
+  {
+    "id": 3,
+    "initialData": {
+      "alt": 3600,
+      "azimuth": 195,
+      "elevation": 3200,
+      "lat": 32.0981,
+      "lon": 34.7749,
+      "mass": 280,
+      "initialSpeed": 3050
+    },
+    "coordinates": [
+      { "lon": 34.775200, "lat": 32.098600, "alt": 220 },
+      { "lon": 34.775800, "lat": 32.097900, "alt": 190 },
+      { "lon": 34.776400, "lat": 32.097100, "alt": 160 },
+      { "lon": 34.777000, "lat": 32.096300, "alt": 130 }
+    ],
+    "time": {
+      "hour": "08:40:45",
+      "date": "2026-01-07",
+      "amount_of_time": "04:25"
+    }
+  },
+  {
+    "id": 4,
+    "initialData": {
+      "alt": 3400,
+      "azimuth": 250,
+      "elevation": 3100,
+      "lat": 32.0604,
+      "lon": 34.8032,
+      "mass": 350,
+      "initialSpeed": 3300
+    },
+    "coordinates": [
+      { "lon": 34.803500, "lat": 32.060900, "alt": 210 },
+      { "lon": 34.804000, "lat": 32.060200, "alt": 180 },
+      { "lon": 34.804600, "lat": 32.059500, "alt": 150 },
+      { "lon": 34.805100, "lat": 32.058800, "alt": 120 }
+    ],
+    "time": {
+      "hour": "18:34:06",
+      "date": "2026-01-01",
+      "amount_of_time": "01:30"
+    }
+  },
+  {
+    "id": 5,
+    "initialData": {
+      "alt": 3700,
+      "azimuth": 180,
+      "elevation": 3400,
+      "lat": 32.1126,
+      "lon": 34.7971,
+      "mass": 290,
+      "initialSpeed": 3150
+    },
+    "coordinates": [
+      { "lon": 34.797400, "lat": 32.113100, "alt": 230 },
+      { "lon": 34.798000, "lat": 32.112400, "alt": 200 },
+      { "lon": 34.798600, "lat": 32.111600, "alt": 170 },
+      { "lon": 34.799200, "lat": 32.110900, "alt": 140 }
+    ],
+    "time": {
+      "hour": "07:40:45",
+      "date": "2026-02-01",
+      "amount_of_time": "05:25"
+    }
+  },
+  {
+    "id": 6,
+    "initialData": {
+      "alt": 3300,
+      "azimuth": 265,
+      "elevation": 3000,
+      "lat": 32.0459,
+      "lon": 34.8124,
+      "mass": 360,
+      "initialSpeed": 3350
+    },
+    "coordinates": [
+      { "lon": 34.812700, "lat": 32.046400, "alt": 190 },
+      { "lon": 34.813300, "lat": 32.045700, "alt": 165 },
+      { "lon": 34.813900, "lat": 32.045000, "alt": 140 },
+      { "lon": 34.814500, "lat": 32.044300, "alt": 115 }
+    ],
+    "time": {
+      "hour": "19:40:30",
+      "date": "2026-01-09",
+      "amount_of_time": "01:12"
+    }
+  },
+  {
+    "id": 7,
+    "initialData": {
+      "alt": 3550,
+      "azimuth": 220,
+      "elevation": 3250,
+      "lat": 32.0902,
+      "lon": 34.7693,
+      "mass": 310,
+      "initialSpeed": 3180
+    },
+    "coordinates": [
+      { "lon": 34.769500, "lat": 32.090700, "alt": 210 },
+      { "lon": 34.770100, "lat": 32.090000, "alt": 185 },
+      { "lon": 34.770700, "lat": 32.089300, "alt": 160 },
+      { "lon": 34.771300, "lat": 32.088600, "alt": 135 }
+    ],
+    "time": {
+      "hour": "11:15:20",
+      "date": "2026-01-12",
+      "amount_of_time": "01:31"
+    }
+  },
+  {
+    "id": 8,
+    "initialData": {
+      "alt": 3650,
+      "azimuth": 205,
+      "elevation": 3350,
+      "lat": 32.1015,
+      "lon": 34.7868,
+      "mass": 295,
+      "initialSpeed": 3220
+    },
+    "coordinates": [
+      { "lon": 34.787100, "lat": 32.102000, "alt": 225 },
+      { "lon": 34.787700, "lat": 32.101300, "alt": 195 },
+      { "lon": 34.788300, "lat": 32.100600, "alt": 165 },
+      { "lon": 34.788900, "lat": 32.099900, "alt": 140 }
+    ],
+    "time": {
+      "hour": "14:42:10",
+      "date": "2026-01-14",
+      "amount_of_time": "09:09"
+    }
+  },
+  {
+    "id": 9,
+    "initialData": {
+      "alt": 3450,
+      "azimuth": 270,
+      "elevation": 3150,
+      "lat": 32.0528,
+      "lon": 34.8201,
+      "mass": 370,
+      "initialSpeed": 3400
+    },
+    "coordinates": [
+      { "lon": 34.820400, "lat": 32.053300, "alt": 205 },
+      { "lon": 34.821000, "lat": 32.052600, "alt": 180 },
+      { "lon": 34.821600, "lat": 32.051900, "alt": 155 },
+      { "lon": 34.822200, "lat": 32.051200, "alt": 130 }
+    ],
+    "time": {
+      "hour": "16:05:55",
+      "date": "2026-01-18",
+      "amount_of_time": "01:26"
+    }
+  },
+  {
+    "id": 10,
+    "initialData": {
+      "alt": 3750,
+      "azimuth": 190,
+      "elevation": 3450,
+      "lat": 32.1189,
+      "lon": 34.8016,
+      "mass": 285,
+      "initialSpeed": 3280
+    },
+    "coordinates": [
+      { "lon": 34.801900, "lat": 32.119400, "alt": 235 },
+      { "lon": 34.802500, "lat": 32.118700, "alt": 205 },
+      { "lon": 34.803100, "lat": 32.118000, "alt": 175 },
+      { "lon": 34.803700, "lat": 32.117300, "alt": 150 }
+    ],
+    "time": {
+      "hour": "21:30:40",
+      "date": "2026-01-22",
+      "amount_of_time": "01:03"
+    }
+  }
+
+]

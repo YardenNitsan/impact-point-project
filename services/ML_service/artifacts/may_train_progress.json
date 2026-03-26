@@ -1,0 +1,27 @@
+{
+  "processed_train_files": [
+    "../../data/era5\\era5_2025_05_01.nc",
+    "../../data/era5\\era5_2025_05_02.nc",
+    "../../data/era5\\era5_2025_05_03.nc",
+    "../../data/era5\\era5_2025_05_04.nc",
+    "../../data/era5\\era5_2025_05_05.nc",
+    "../../data/era5\\era5_2025_05_06.nc",
+    "../../data/era5\\era5_2025_05_07.nc",
+    "../../data/era5\\era5_2025_05_08.nc",
+    "../../data/era5\\era5_2025_05_09.nc",
+    "../../data/era5\\era5_2025_05_10.nc",
+    "../../data/era5\\era5_2025_05_11.nc",
+    "../../data/era5\\era5_2025_05_12.nc",
+    "../../data/era5\\era5_2025_05_13.nc",
+    "../../data/era5\\era5_2025_05_14.nc",
+    "../../data/era5\\era5_2025_05_15.nc",
+    "../../data/era5\\era5_2025_05_16.nc",
+    "../../data/era5\\era5_2025_05_17.nc",
+    "../../data/era5\\era5_2025_05_18.nc",
+    "../../data/era5\\era5_2025_05_19.nc",
+    "../../data/era5\\era5_2025_05_20.nc",
+    "../../data/era5\\era5_2025_05_21.nc",
+    "../../data/era5\\era5_2025_05_22.nc",
+    "../../data/era5\\era5_2025_05_23.nc"
+  ]
+}

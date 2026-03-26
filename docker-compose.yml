@@ -1,0 +1,62 @@
+services:
+  mongo:
+    image: mongo
+    container_name: main-service-mongo
+    profiles: ["api"]
+    ports:
+      - "27017:27017"
+
+  mongo-dataset:
+    image: mongo
+    container_name: dataset-mongo
+    profiles: ["dataset"]
+    ports:
+      - "27018:27017"
+
+  algorithm:
+    build: ./services/algorithm_service
+    container_name: algorithm-service
+    profiles: ["api"]
+    ports:
+      - "8000:8000"
+    environment:
+      - SERVICE_MODE=api
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+  algorithm-dataset:
+    build: ./services/algorithm_service
+    container_name: algorithm-dataset
+    profiles: ["dataset"]
+    environment:
+      - SERVICE_MODE=dataset
+      - ERA5_DIR=/data/era5
+      - ERA5_MAX_CACHED_HOURS=2
+      - N_SAMPLES=200000
+      - OUTPUT_DATASET=/data/dataset_200k.jsonl
+      - GEN_THREADS=2
+      - GEN_MAX_IN_FLIGHT=2
+      - GEN_SEED=42
+      - SKIP_ERA5_DAYS=19
+    volumes:
+      - ./data/era5:/data/era5
+      - ./data:/data
+    command: python -m modules.atmosphere.generate_dataset_fast
+
+  main:
+    build: ./services/main-service
+    ports:
+      - "3000:3000"
+    profiles: ["api"]
+    env_file:
+      - ./services/main-service/.env
+    depends_on:
+      - mongo
+      - algorithm
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "4200:4200"
+    profiles: ["api"]
+    depends_on:
+      - main
