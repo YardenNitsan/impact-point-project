@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -19,7 +20,7 @@ def startup_event() -> None:
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"status": "Weather service is running"}
+    return {"status": "Machine service is running"}
 
 
 @app.get("/health", response_model=ServiceInfo)
@@ -55,13 +56,20 @@ class PhysicsWeatherRequest(BaseModel):
     lat: float = Field(..., ge=-90.0, le=90.0)
     lon: float = Field(..., ge=-180.0, le=180.0)
     alt: float
-    sim_datetime: str
+    sim_datetime: Optional[str] = None
 
 
 @app.post("/predict-weather-physics")
 def predict_weather_physics(req: PhysicsWeatherRequest):
     try:
-        dt = datetime.fromisoformat(req.sim_datetime)
+        if req.sim_datetime:
+            dt = datetime.fromisoformat(req.sim_datetime)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+        else:
+            dt = datetime.now(timezone.utc)
 
         day_of_year = float(dt.timetuple().tm_yday)
         utc_hour = dt.hour + dt.minute / 60.0 + dt.second / 3600.0

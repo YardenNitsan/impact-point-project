@@ -13,6 +13,42 @@ services:
     ports:
       - "27018:27017"
 
+  ml-weather:
+    build: ./services/ML_service
+    container_name: ml-weather-service
+    profiles: ["api"]
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WEATHER_ARTIFACT_DIR=/app/artifacts
+      - OMP_NUM_THREADS=1
+      - OPENBLAS_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
+      - BLIS_NUM_THREADS=1
+      - NUMEXPR_NUM_THREADS=1
+    volumes:
+      - ./services/ML_service/artifacts:/app/artifacts:ro
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+  weather-service:
+    build: ./services/weather_service
+    container_name: weather-service
+    profiles: ["api"]
+    ports:
+      - "8080:8080"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - APP_NAME=weather-service
+      - APP_VERSION=1.0.0
+      - REQUEST_TIMEOUT_SECONDS=20
+      - MACHINE_BASE_URL=http://ml-weather:8000
+      - MACHINE_PREDICT_PATH=/predict-weather-physics
+      - OPENMETEO_ARCHIVE_URL=https://archive-api.open-meteo.com/v1/archive
+    depends_on:
+      - ml-weather
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080
+
   algorithm:
     build: ./services/algorithm_service
     container_name: algorithm-service
@@ -20,10 +56,13 @@ services:
     ports:
       - "8001:8000"
     environment:
+      - PYTHONUNBUFFERED=1
       - SERVICE_MODE=api
-      - WEATHER_MACHINE_URL=http://host.docker.internal:8000
-      - WEATHER_API_URL=http://host.docker.internal:9999
+      - WEATHER_SERVICE_URL=http://weather-service:8080
+      - WEATHER_SERVICE_PATH=/weather
       - WEATHER_PROVIDER_TIMEOUT_S=5.0
+    depends_on:
+      - weather-service
     command: uvicorn main:app --host 0.0.0.0 --port 8000
 
   algorithm-dataset:

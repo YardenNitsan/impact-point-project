@@ -61,7 +61,14 @@ class StaticWeatherProviderClient:
 class HTTPWeatherProviderClient:
     is_static = False
 
-    def __init__(self, *, name: str, url: str, timeout_s: float = 3.0) -> None:
+    def __init__(
+        self,
+        *,
+        name: str,
+        url: str,
+        timeout_s: float = 3.0,
+        requested_source: str | None = None,
+    ) -> None:
         normalized_url = (url or "").strip()
         if not normalized_url:
             raise ValueError(f"Missing URL for weather provider '{name}'")
@@ -69,6 +76,7 @@ class HTTPWeatherProviderClient:
         self.name = str(name)
         self.url = normalized_url
         self.timeout_s = float(timeout_s)
+        self.requested_source = str(requested_source).lower() if requested_source else None
         self.session = requests.Session()
 
     def fetch(self, *, lat: float, lon: float, alt: float, when: datetime) -> ProviderWeatherSample:
@@ -79,26 +87,75 @@ class HTTPWeatherProviderClient:
             "sim_datetime": when.isoformat(),
         }
 
+        if self.requested_source is not None:
+            payload["source"] = self.requested_source
+
+        should_log_api = self.requested_source == "api" or self.name == "api"
+
+        if should_log_api:
+            print("\n========== WEATHER API REQUEST ==========")
+            print(f"POST {self.url}")
+            print("Payload:")
+            print(payload)
+            print("========================================\n")
+
         response = self.session.post(
             self.url,
             json=payload,
             timeout=self.timeout_s,
         )
+
+        if should_log_api:
+            print("\n========== WEATHER API RESPONSE ==========")
+            print(f"Status code: {response.status_code}")
+            try:
+                print("JSON body:")
+                print(response.json())
+            except Exception:
+                print("Raw body:")
+                print(response.text)
+            print("=========================================\n")
+
         response.raise_for_status()
 
         body = response.json()
         if not isinstance(body, dict):
             raise ValueError("Weather provider response must be a JSON object")
 
+        source_used = str(
+            body.get(
+                "source",
+                body.get("provider_used", self.requested_source or self.name),
+            )
+        )
+        provider_used = str(
+            body.get(
+                "provider",
+                body.get("provider_used", self.name),
+            )
+        )
+
         return ProviderWeatherSample(
             temperature_K=_pick_required_float(body, "temperature_K", "T0_K", "T_K", "temp_K"),
             pressure_Pa=_pick_required_float(body, "pressure_Pa", "P0_Pa", "P_Pa", "pressure"),
             wind_x_mps=_pick_optional_float(body, "wind_x_mps", "wind_x"),
             wind_z_mps=_pick_optional_float(body, "wind_z_mps", "wind_z"),
-            wind_east_mps=_pick_optional_float(body, "wind_u_east_mps", "u_east_mps", "u", "wind_east_mps"),
-            wind_north_mps=_pick_optional_float(body, "wind_v_north_mps", "v_north_mps", "v", "wind_north_mps"),
-            source=str(body.get("source", self.name)),
-            provider=str(body.get("provider", self.name)),
+            wind_east_mps=_pick_optional_float(
+                body,
+                "wind_u_east_mps",
+                "u_east_mps",
+                "u",
+                "wind_east_mps",
+            ),
+            wind_north_mps=_pick_optional_float(
+                body,
+                "wind_v_north_mps",
+                "v_north_mps",
+                "v",
+                "wind_north_mps",
+            ),
+            source=source_used,
+            provider=provider_used,
             note=str(body.get("note", "")),
         )
 

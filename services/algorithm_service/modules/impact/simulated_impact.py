@@ -80,12 +80,9 @@ AERO_REF = AeroRef(
     reference_length=DEFAULT_REFERENCE_LENGTH_M,
 )
 
-DEFAULT_WEATHER_API_URL = os.environ.get("WEATHER_API_URL", "")
-DEFAULT_WEATHER_MACHINE_URL = os.environ.get("WEATHER_MACHINE_URL", "")
+DEFAULT_WEATHER_SERVICE_URL = os.environ.get("WEATHER_SERVICE_URL", "")
 DEFAULT_WEATHER_TIMEOUT_S = float(os.environ.get("WEATHER_PROVIDER_TIMEOUT_S", "3.0"))
-
-MACHINE_PREDICT_PATH = "/predict-weather-physics"
-API_PREDICT_PATH = "/predict-weather"   # change only if real API uses another route
+WEATHER_SERVICE_PATH = os.environ.get("WEATHER_SERVICE_PATH", "/weather")
 
 
 def join_base_url_and_path(base_url: str, path: str) -> str:
@@ -146,21 +143,15 @@ def _select_weather_provider(initial_conditions: SimulationInput):
 
     requested_source = str(initial_conditions.get("weather_source", "machine")).lower()
 
-    if requested_source == "machine":
-        return HTTPWeatherProviderClient(
-            name="machine",
-            url=join_base_url_and_path(DEFAULT_WEATHER_MACHINE_URL, MACHINE_PREDICT_PATH),
-            timeout_s=DEFAULT_WEATHER_TIMEOUT_S,
-        ), requested_source
+    if requested_source not in {"api", "machine"}:
+        raise ValueError("weather_source must be 'api' or 'machine'")
 
-    if requested_source == "api":
-        return HTTPWeatherProviderClient(
-            name="api",
-            url=join_base_url_and_path(DEFAULT_WEATHER_API_URL, API_PREDICT_PATH),
-            timeout_s=DEFAULT_WEATHER_TIMEOUT_S,
-        ), requested_source
-
-    raise ValueError("weather_source must be 'api' or 'machine'")
+    return HTTPWeatherProviderClient(
+        name=requested_source,
+        url=join_base_url_and_path(DEFAULT_WEATHER_SERVICE_URL, WEATHER_SERVICE_PATH),
+        timeout_s=DEFAULT_WEATHER_TIMEOUT_S,
+        requested_source=requested_source,
+    ), requested_source
 
 
 def simulate_impact(

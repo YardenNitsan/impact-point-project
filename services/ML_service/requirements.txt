@@ -4,3 +4,5 @@ numpy
 xarray
 netCDF4
 pydantic
+joblib
+scikit-learn
