@@ -18,9 +18,12 @@ services:
     container_name: algorithm-service
     profiles: ["api"]
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - SERVICE_MODE=api
+      - WEATHER_MACHINE_URL=http://host.docker.internal:8000
+      - WEATHER_API_URL=http://host.docker.internal:9999
+      - WEATHER_PROVIDER_TIMEOUT_S=5.0
     command: uvicorn main:app --host 0.0.0.0 --port 8000
 
   algorithm-dataset:

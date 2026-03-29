@@ -1,3 +1,3 @@
-from .config import BasisConfig, SamplingConfig, SplitConfig
-from .feature_builder import FeatureBuilder
-from .model import WeatherGAMBundle, WeatherGAMTrainer
+from .config import SamplingConfig, SplitConfig
+from .tree_features import TreeFeatureBuilder, TreeFeatureConfig
+from .tree_model import WeatherTreeBundle, WeatherTreeTrainer

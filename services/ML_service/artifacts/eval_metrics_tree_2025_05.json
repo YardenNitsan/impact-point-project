@@ -1,0 +1,164 @@
+{
+  "year": 2025,
+  "months": [
+    5
+  ],
+  "model_path": "C:\\Users\\yarde\\Documents\\impact-point-project\\services\\ML_service\\artifacts\\weather_tree_bundle_2025_05.joblib",
+  "train_rows": 690000,
+  "val_rows": 32000,
+  "test_rows": 32000,
+  "final_train_rows": 722000,
+  "feature_metadata": {
+    "config": {
+      "annual_harmonics": 2,
+      "utc_hour_harmonics": 2,
+      "local_hour_harmonics": 2,
+      "include_xyz": true,
+      "include_altitude_polynomials": true,
+      "include_altitude_directional_terms": true
+    },
+    "feature_names": [
+      "lat_deg",
+      "lon_deg",
+      "abs_lat_deg",
+      "alt_km",
+      "log1p_alt_km",
+      "alt_km_sq",
+      "alt_km_cu",
+      "sin_lat",
+      "cos_lat",
+      "sin_lon",
+      "cos_lon",
+      "sphere_x",
+      "sphere_y",
+      "sphere_z",
+      "alt_x_sin_lat",
+      "alt_x_cos_lat",
+      "alt_x_sin_lon",
+      "alt_x_cos_lon",
+      "alt_x_abs_lat",
+      "doy_sin_1",
+      "doy_cos_1",
+      "doy_sin_2",
+      "doy_cos_2",
+      "utc_sin_1",
+      "utc_cos_1",
+      "utc_sin_2",
+      "utc_cos_2",
+      "solar_sin_1",
+      "solar_cos_1",
+      "solar_sin_2",
+      "solar_cos_2"
+    ],
+    "n_features": 31
+  },
+  "train_sampling_config": {
+    "samples_per_file": 30000,
+    "seed": 42,
+    "altitude_clip_m": [
+      0.0,
+      32000.0
+    ],
+    "stratified_time_level": true
+  },
+  "eval_sampling_config": {
+    "samples_per_file": 8000,
+    "seed": 142,
+    "altitude_clip_m": [
+      0.0,
+      32000.0
+    ],
+    "stratified_time_level": true
+  },
+  "split_config": {
+    "train_end_day_inclusive": 23,
+    "val_end_day_inclusive": 27
+  },
+  "scope": {
+    "lat_range": null,
+    "lon_range": null,
+    "altitude_range_m": null,
+    "weight_mode": "ballistics"
+  },
+  "best_model_configs": {
+    "T": {
+      "loss": "squared_error",
+      "max_bins": 255,
+      "early_stopping": true,
+      "validation_fraction": 0.1,
+      "n_iter_no_change": 45,
+      "random_state": 42,
+      "learning_rate": 0.05,
+      "max_iter": 700,
+      "max_leaf_nodes": 127,
+      "min_samples_leaf": 48,
+      "l2_regularization": 0.001
+    },
+    "P": {
+      "loss": "squared_error",
+      "max_bins": 255,
+      "early_stopping": true,
+      "validation_fraction": 0.1,
+      "n_iter_no_change": 45,
+      "random_state": 42,
+      "learning_rate": 0.05,
+      "max_iter": 700,
+      "max_leaf_nodes": 127,
+      "min_samples_leaf": 64,
+      "l2_regularization": 0.001
+    },
+    "U": {
+      "loss": "squared_error",
+      "max_bins": 255,
+      "early_stopping": true,
+      "validation_fraction": 0.1,
+      "n_iter_no_change": 45,
+      "random_state": 42,
+      "learning_rate": 0.025,
+      "max_iter": 1500,
+      "max_leaf_nodes": 255,
+      "min_samples_leaf": 24,
+      "l2_regularization": 0.0005
+    },
+    "V": {
+      "loss": "squared_error",
+      "max_bins": 255,
+      "early_stopping": true,
+      "validation_fraction": 0.1,
+      "n_iter_no_change": 45,
+      "random_state": 42,
+      "learning_rate": 0.03,
+      "max_iter": 1200,
+      "max_leaf_nodes": 191,
+      "min_samples_leaf": 32,
+      "l2_regularization": 0.0005
+    }
+  },
+  "tuning_validation_mae": {
+    "T": 2.0983916733493246,
+    "P": 4.209635612750851,
+    "U": 5.640130538815558,
+    "V": 6.141449478163854
+  },
+  "test": {
+    "mae": {
+      "T": 2.2466473643610443,
+      "P": 14.864012458762124,
+      "U": 6.114911905356132,
+      "V": 5.6024253972308395
+    },
+    "rmse": {
+      "T": 3.133644171671208,
+      "P": 186.63683553075379,
+      "U": 8.624292288166698,
+      "V": 8.136414795733355
+    },
+    "max_abs": {
+      "T": 20.82980202237701,
+      "P": 7302.029115743309,
+      "U": 57.34747497811967,
+      "V": 54.11559832656234
+    },
+    "n_samples": 32000
+  }
+}
