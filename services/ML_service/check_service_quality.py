@@ -90,6 +90,5 @@ def main() -> None:
     print(json.dumps(report, indent=2))
     print(f"\nSaved to: {OUT_PATH}")
 
-
 if __name__ == "__main__":
     main()
