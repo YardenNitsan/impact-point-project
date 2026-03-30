@@ -21,6 +21,7 @@ export const getSimulationDetails = async (req: Request, res: Response) => {
       durationSeconds: result.durationSeconds,
       initialData: input.initialData,
       coordinates: result.coordinates,
+      weather_source: result.weather_source,
     });
   } catch (err) {
     console.error("DETAILS ERROR:", err);

@@ -70,6 +70,9 @@ export class FormComponent {
       Validators.min(-180),
       Validators.max(180),
     ]),
+    weather_source: new FormControl<'machine' | 'api'>('machine', [
+      Validators.required,
+    ]),
   });
 
   @Output() isSubmitted = new EventEmitter<boolean>();
@@ -85,7 +88,7 @@ export class FormComponent {
     this.isLoadingOverlay = true;
     this.errorMsg = '';
 
-    const { mass, speed, elevation, azimuth, lat, lon, alt } =
+    const { mass, speed, elevation, azimuth, lat, lon, alt, weather_source } =
       this.trajectoryForm.value;
     const payload = {
       mass: Number(mass),
@@ -95,6 +98,7 @@ export class FormComponent {
       lat: Number(lat),
       lon: Number(lon),
       alt: Number(alt),
+      weather_source: weather_source ?? 'machine',
     };
 
     this.http

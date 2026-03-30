@@ -38,7 +38,8 @@
   font-size: 0.9em;
 }
 
-.row input {
+.row input,
+.row select {
   padding: 0.6em 0.8em;
   border-radius: 0.5em;
 
@@ -54,14 +55,20 @@
   color: #94a3b8;
 }
 
-.row input:focus {
+.row input:focus,
+.row select:focus {
   border-color: #60a5fa;
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
 }
 
-.row input.ng-touched.ng-invalid {
+.row input.ng-touched.ng-invalid,
+.row select.ng-touched.ng-invalid {
   border-color: #ff6b6b;
   box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.25);
+}
+
+.row select {
+  appearance: none;
 }
 
 .send-btn {

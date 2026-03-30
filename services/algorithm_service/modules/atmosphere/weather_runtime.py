@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import math
 from typing import List
 
@@ -43,13 +43,18 @@ class TrajectoryWeatherRuntime:
         launch_lat_deg: float,
         launch_lon_deg: float,
         azimuth_rad: float,
-        launch_datetime: datetime,
+        launch_datetime: datetime | None = None,
     ) -> None:
         self.provider_client = provider_client
         self.launch_lat_deg = float(launch_lat_deg)
         self.launch_lon_deg = float(launch_lon_deg)
         self.azimuth_rad = float(azimuth_rad)
-        self.launch_datetime = launch_datetime
+        if launch_datetime is None:
+            self.launch_datetime = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        elif launch_datetime.tzinfo is None:
+            self.launch_datetime = launch_datetime.replace(tzinfo=timezone.utc)
+        else:
+            self.launch_datetime = launch_datetime.astimezone(timezone.utc)
         self.history: List[WeatherFetchRecord] = []
         self.refresh_count = 0
 

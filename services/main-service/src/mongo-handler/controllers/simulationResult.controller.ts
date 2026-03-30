@@ -10,6 +10,7 @@ export const getSimulationResults = async (_req: Request, res: Response) => {
         id: r._id.toString(),
         createdAt: r.createdAt,
         durationSeconds: r.durationSeconds,
+        weather_source: r.weather_source,
       })),
     );
   } catch (err) {

@@ -6,10 +6,21 @@ import { SimulationResult } from "../models/simulationResult.model";
 import { environmentService } from "../../environment";
 
 export const createSimulation = async (req: Request, res: Response) => {
+  const normalizedInput = {
+    ...req.body,
+    weather_source: req.body.weather_source ?? "machine",
+  };
+
+  const physicsPayload = {
+    ...normalizedInput,
+    return_trajectory: true,
+    sample_dx_m: 12,
+  };
+
   try {
     const pythonResponse = await axios.post(
       environmentService.PYTHON_SERVICE_URI,
-      req.body,
+      physicsPayload,
     );
 
     if (!pythonResponse.data || !pythonResponse.data.trajectory) {
@@ -20,7 +31,8 @@ export const createSimulation = async (req: Request, res: Response) => {
     }
 
     const inputDoc = new SimulationInput({
-      initialData: req.body,
+      initialData: normalizedInput,
+      weather_source: normalizedInput.weather_source,
     });
 
     const savedInput = await inputDoc.save();
@@ -31,6 +43,7 @@ export const createSimulation = async (req: Request, res: Response) => {
       simulationInputId: savedInput._id,
       coordinates: result.trajectory,
       durationSeconds: Math.round(result.physical_time * 100) / 100,
+      weather_source: normalizedInput.weather_source,
     });
 
     const savedResult = await resultDoc.save();

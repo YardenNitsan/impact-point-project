@@ -4,6 +4,7 @@ import { initialDataSchema, InitialData } from "./initialData.model";
 
 export interface SimulationInputDocument extends mongoose.Document {
   initialData: InitialData;
+  weather_source: "machine" | "api";
 }
 
 const SimulationInputSchema = new mongoose.Schema(
@@ -11,6 +12,12 @@ const SimulationInputSchema = new mongoose.Schema(
     initialData: {
       type: initialDataSchema,
       required: true,
+    },
+    weather_source: {
+      type: String,
+      enum: ["machine", "api"],
+      required: true,
+      default: "machine",
     },
   },
   defaultSchemaOptions,

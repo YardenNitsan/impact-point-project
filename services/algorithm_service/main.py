@@ -23,7 +23,10 @@ class SimulationInput(BaseModel):
     lon: float = Field(..., ge=-180.0, le=180.0, description="Launch longitude [deg]")
     mass: float = Field(..., gt=0.0, description="Projectile mass [kg]")
     initialSpeed: float = Field(..., ge=0.0, description="Initial speed magnitude [m/s]")
-    sim_datetime: str = Field(..., description="Simulation datetime in ISO-8601 format")
+    sim_datetime: str | None = Field(
+        default=None,
+        description="Optional simulation datetime in ISO-8601 format",
+    )
 
     weather_source: Literal["api", "machine"] = Field(
         default="machine",
@@ -63,7 +66,10 @@ def simulate(input: SimulationInput):
     print("==============================\n")
 
     try:
-        payload = input.model_dump(exclude={"return_trajectory", "sample_dx_m"})
+        payload = input.model_dump(
+            exclude={"return_trajectory", "sample_dx_m"},
+            exclude_none=True,
+        )
 
         result = simulate_impact(
             payload,

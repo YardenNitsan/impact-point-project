@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, NotRequired, TypedDict
 
 from modules.aerodynamics.aero_tables import default_demo_table
@@ -31,7 +31,7 @@ class SimulationInput(TypedDict):
     elevation: float
     mass: float
     initialSpeed: float
-    sim_datetime: str | datetime
+    sim_datetime: NotRequired[str | datetime]
 
     weather_source: NotRequired[str]
 
@@ -186,8 +186,12 @@ def simulate_impact(
         q=0.0,
     )
 
-    sim_time_raw = initial_conditions["sim_datetime"]
-    sim_time = datetime.fromisoformat(sim_time_raw) if isinstance(sim_time_raw, str) else sim_time_raw
+    sim_time_raw = initial_conditions.get("sim_datetime")
+    sim_time = (
+        datetime.fromisoformat(sim_time_raw)
+        if isinstance(sim_time_raw, str)
+        else sim_time_raw
+    )
 
     provider_client, requested_source = _select_weather_provider(initial_conditions)
     weather_runtime = TrajectoryWeatherRuntime(
