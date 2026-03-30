@@ -27,6 +27,7 @@ export class HistoryComponent implements OnInit, OnDestroy {
   protected simulations: SimulationHistoryItem[] = [];
   private cardsToNotScroll = 5;
   private shouldScroll = false;
+
   @Output() countSim = new EventEmitter<number>();
   @Output() openDetails = new EventEmitter<string>();
 
@@ -43,6 +44,7 @@ export class HistoryComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (data) => {
           console.log(data);
+
           this.simulations = data.map((sim) => ({
             ...sim,
             formattedDuration: this.formatTime(sim.durationSeconds),
@@ -58,7 +60,6 @@ export class HistoryComponent implements OnInit, OnDestroy {
   }
 
   deleteSim(id: string) {
-    console.log(id);
     this.simulationService
       .deleteSimulation(id)
       .pipe(takeUntil(this.destroyed$))
@@ -70,10 +71,15 @@ export class HistoryComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('Failed to delete simulation', err);
-          alert('Delete failed');
+          alert(
+            err?.message ||
+              err?.error?.error?.message ||
+              'Failed to delete simulation',
+          );
         },
       });
   }
+
   watchSim(id: string) {
     this.simulationService
       .watchSimulation(id)
@@ -81,13 +87,15 @@ export class HistoryComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (coords: Coordinate[]) => {
           console.log('WATCH RESPONSE:', coords);
-
-          // save coordinates only cause other are not important here
           this.shared.setData(coords);
-
           this.router.navigateByUrl('/');
         },
-        error: () => alert('load failed'),
+        error: (err) =>
+          alert(
+            err?.message ||
+              err?.error?.error?.message ||
+              'Failed to load simulation',
+          ),
       });
   }
 

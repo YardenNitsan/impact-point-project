@@ -40,7 +40,6 @@ export class DetailsComponent implements OnChanges, OnDestroy {
 
   private loadDetails() {
     this.loading = true;
-
     this.subscription?.unsubscribe();
 
     this.subscription = this.detailsService
@@ -51,8 +50,12 @@ export class DetailsComponent implements OnChanges, OnDestroy {
           this.details = data;
           this.loading = false;
         },
-        error: () => {
-          alert('Failed to load simulation details');
+        error: (err) => {
+          alert(
+            err?.message ||
+              err?.error?.error?.message ||
+              'Failed to load simulation details',
+          );
           this.loading = false;
         },
       });

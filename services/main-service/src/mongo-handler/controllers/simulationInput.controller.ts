@@ -4,9 +4,22 @@ import axios from "axios";
 import { SimulationInput } from "../models/simulationInput.model";
 import { SimulationResult } from "../models/simulationResult.model";
 import { environmentService } from "../../environment";
+import {
+  generateSimulationAccessToken,
+  SIMULATION_TOKEN_HEADER,
+} from "../../utils/simulation-access-token";
 
 const PHYSICS_RESPONSE_LIMIT_BYTES = 5 * 1024 * 1024;
-const MAX_TRAJECTORY_POINTS = 10000;
+const MAX_TRAJECTORY_POINTS = 30000;
+
+function chooseSampleDx(input: { alt: number; initialSpeed: number }): number {
+  const alt = Number(input.alt);
+  const speed = Number(input.initialSpeed);
+
+  if (alt >= 10000 || speed >= 800) return 5;
+  if (alt >= 5000 || speed >= 500) return 4;
+  return 3;
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -43,18 +56,6 @@ function isValidPhysicsResponse(value: unknown): value is {
 export const createSimulation = async (req: Request, res: Response) => {
   const normalizedInput = req.body;
 
-  function chooseSampleDx(input: {
-    alt: number;
-    initialSpeed: number;
-  }): number {
-    const alt = Number(input.alt);
-    const speed = Number(input.initialSpeed);
-
-    if (alt >= 10000 || speed >= 800) return 50;
-    if (alt >= 5000 || speed >= 500) return 25;
-    return 12;
-  }
-
   const physicsPayload = {
     ...normalizedInput,
     return_trajectory: true,
@@ -66,7 +67,7 @@ export const createSimulation = async (req: Request, res: Response) => {
       environmentService.PYTHON_SERVICE_URI,
       physicsPayload,
       {
-        timeout: 60_000,
+        timeout: 90_000,
         maxContentLength: PHYSICS_RESPONSE_LIMIT_BYTES,
         maxBodyLength: PHYSICS_RESPONSE_LIMIT_BYTES,
       },
@@ -88,6 +89,8 @@ export const createSimulation = async (req: Request, res: Response) => {
     });
 
     const savedInput = await inputDoc.save();
+    const { token: accessToken, tokenHash: accessTokenHash } =
+      generateSimulationAccessToken();
 
     const resultDoc = new SimulationResult({
       simulationInputId: savedInput._id,
@@ -95,6 +98,7 @@ export const createSimulation = async (req: Request, res: Response) => {
       durationSeconds:
         Math.round(pythonResponse.data.physical_time * 100) / 100,
       weather_source: normalizedInput.weather_source,
+      accessTokenHash,
     });
 
     const savedResult = await resultDoc.save();
@@ -103,6 +107,8 @@ export const createSimulation = async (req: Request, res: Response) => {
       success: true,
       inputId: savedInput._id,
       resultId: savedResult._id,
+      accessToken,
+      accessTokenHeader: SIMULATION_TOKEN_HEADER,
       algorithm: pythonResponse.data,
     });
   } catch (error: unknown) {

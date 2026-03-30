@@ -20,6 +20,7 @@ import {
   VerticalOrigin,
   LabelGraphics,
   ClockRange,
+  ArcType,
 } from 'cesium';
 
 import { Coordinate } from '../../models/coordinate.model';
@@ -42,9 +43,9 @@ const CAMERA_HEIGHT_LOD_MEDIUM_METERS = 50_000;
 const CAMERA_HEIGHT_LOD_FAR_METERS = 200_000;
 
 // Polyline max points by LOD
-const MAX_POLYLINE_POINTS_LOD_NEAR = 300;
-const MAX_POLYLINE_POINTS_LOD_MEDIUM = 200;
-const MAX_POLYLINE_POINTS_LOD_FAR = 120;
+const MAX_POLYLINE_POINTS_LOD_NEAR = 2500;
+const MAX_POLYLINE_POINTS_LOD_MEDIUM = 1200;
+const MAX_POLYLINE_POINTS_LOD_FAR = 500;
 
 // Polyline width by LOD
 const POLYLINE_WIDTH_NEAR = 4;
@@ -326,25 +327,21 @@ export async function drawTrajectoryLOD(
   handles.lastDurationSeconds = safeDuration;
 
   // terrain
-  const terrainHeightsMeters = await sampleTerrainFastCached(
-    viewer,
-    rawPoints,
-    trajectoryCacheKey,
-  );
-
   // full positions
   const fullTrajectoryPositions: Cartesian3[] = [];
   fullTrajectoryPositions.length = rawPoints.length;
+
   for (let i = 0; i < rawPoints.length; i++) {
     const point = rawPoints[i];
-    const terrain = terrainHeightsMeters[i] ?? 0;
-    const height = terrain + (point.alt ?? 0);
+    const height = Number(point.alt ?? 0);
+
     fullTrajectoryPositions[i] = Cartesian3.fromDegrees(
       point.lon,
       point.lat,
       Number.isFinite(height) ? height : 0,
     );
   }
+
   handles.fullPositions = fullTrajectoryPositions;
 
   // polyline reusable (CallbackProperty for positions + width)
@@ -370,6 +367,7 @@ export async function drawTrajectoryLOD(
         positions: handles.polylinePositionsCallback,
         width: handles.polylineWidthCallback,
         material: Color.CYAN.withAlpha(POLYLINE_ALPHA),
+        arcType: ArcType.NONE,
       },
     });
   }
@@ -424,8 +422,7 @@ export async function drawTrajectoryLOD(
     const carto = Cartographic.fromCartesian(pos);
     const lat = CesiumMath.toDegrees(carto.latitude);
     const lon = CesiumMath.toDegrees(carto.longitude);
-    const terrain = viewer.scene.globe.getHeight(carto) ?? 0;
-    const alt = carto.height - terrain;
+    const alt = carto.height;
 
     return `lat: ${lat.toFixed(6)}\nlon: ${lon.toFixed(6)}\nalt: ${alt.toFixed(1)} m`;
   }, false);

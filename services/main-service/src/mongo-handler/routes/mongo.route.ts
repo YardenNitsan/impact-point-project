@@ -9,6 +9,7 @@ import {
   validateObjectIdParam,
 } from "../../middlewares/validate-request";
 import { simulationCreateLimiter } from "../../middlewares/rate-limit";
+import { requireSimulationAccessToken } from "../../middlewares/require-simulation-access-token";
 
 const router = Router();
 
@@ -18,11 +19,28 @@ router.post(
   validateCreateSimulation,
   createSimulation,
 );
+
 router.get("/", getSimulationResults);
 
-router.get("/:id/details", validateObjectIdParam, getSimulationDetails);
-router.get("/:id", validateObjectIdParam, getSimulationToWatch);
+router.get(
+  "/:id/details",
+  validateObjectIdParam,
+  requireSimulationAccessToken,
+  getSimulationDetails,
+);
 
-router.delete("/:id", validateObjectIdParam, deleteSimulation);
+router.get(
+  "/:id",
+  validateObjectIdParam,
+  requireSimulationAccessToken,
+  getSimulationToWatch,
+);
+
+router.delete(
+  "/:id",
+  validateObjectIdParam,
+  requireSimulationAccessToken,
+  deleteSimulation,
+);
 
 export default router;

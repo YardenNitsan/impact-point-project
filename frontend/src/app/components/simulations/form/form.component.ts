@@ -13,6 +13,7 @@ import { Router } from '@angular/router';
 import { SharedService } from '../../services/shared.service';
 import { Coordinate } from '../../models/coordinate.model';
 import { SimulationHistoryService } from '../history/history-services/simulationHistory.service';
+import { SimulationTokenService } from '../../services/simulation-token.service';
 
 @Component({
   selector: 'app-form',
@@ -32,6 +33,7 @@ export class FormComponent {
     private shared: SharedService,
     private router: Router,
     private simulationService: SimulationHistoryService,
+    private tokenService: SimulationTokenService,
   ) {}
 
   trajectoryForm = new FormGroup({
@@ -39,22 +41,22 @@ export class FormComponent {
       Validators.required,
       Validators.min(1),
       Validators.max(5000),
-    ]), // kg
+    ]),
     speed: new FormControl('', [
       Validators.required,
       Validators.min(1),
       Validators.max(1200),
-    ]), // m/s
+    ]),
     elevation: new FormControl('', [
       Validators.required,
       Validators.min(-35),
       Validators.max(85),
-    ]), // degrees
+    ]),
     azimuth: new FormControl('', [
       Validators.required,
       Validators.min(0),
       Validators.max(360),
-    ]), // degrees
+    ]),
     alt: new FormControl('', [
       Validators.required,
       Validators.min(1),
@@ -83,6 +85,7 @@ export class FormComponent {
       this.trajectoryForm.markAllAsTouched();
       return;
     }
+
     if (this.loading) return;
 
     this.loading = true;
@@ -91,6 +94,7 @@ export class FormComponent {
 
     const { mass, speed, elevation, azimuth, lat, lon, alt, weather_source } =
       this.trajectoryForm.value;
+
     const payload = {
       mass: Number(mass),
       initialSpeed: Number(speed),
@@ -115,10 +119,15 @@ export class FormComponent {
       .subscribe({
         next: (response) => {
           console.log('Server Response', response);
-          this.simulationId = (response.body as any)?.resultId;
+
+          const body = response.body as any;
+          this.simulationId = body?.resultId;
+
+          if (body?.resultId && body?.accessToken) {
+            this.tokenService.saveToken(body.resultId, body.accessToken);
+          }
 
           this.showSuccessModal = true;
-
           this.isSubmitted.emit(true);
         },
         error: (err) => {
@@ -140,9 +149,11 @@ export class FormComponent {
         this.shared.setData(coords);
         this.router.navigateByUrl('/');
       },
-      error: () => alert('load failed'),
+      error: (err) =>
+        alert(err?.message || err?.error?.error?.message || 'Load failed'),
     });
   }
+
   closeSuccessModal() {
     this.showSuccessModal = false;
     this.trajectoryForm.reset();

@@ -7,6 +7,7 @@ import { errorHandler } from "./middlewares/error-handler";
 import { environmentService } from "./environment";
 import router from "./mongo-handler/routes/mongo.route";
 import { globalRateLimiter, perIpRateLimiter } from "./middlewares/rate-limit";
+import { SIMULATION_TOKEN_HEADER } from "./utils/simulation-access-token";
 
 const ALLOWED_ORIGIN = environmentService.ALLOWED_ORIGIN;
 const PORT = environmentService.NODE_PORT;
@@ -26,7 +27,7 @@ app.use(
   cors({
     origin: ALLOWED_ORIGIN,
     methods: ["GET", "POST", "DELETE"],
-    allowedHeaders: ["Content-Type"],
+    allowedHeaders: ["Content-Type", SIMULATION_TOKEN_HEADER],
     optionsSuccessStatus: 204,
   }),
 );

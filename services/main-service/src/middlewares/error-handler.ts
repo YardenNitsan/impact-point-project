@@ -18,6 +18,16 @@ export function errorHandler(
     });
   }
 
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json({
+      success: false,
+      error: {
+        code: "PAYLOAD_TOO_LARGE",
+        message: "Request body is too large",
+      },
+    });
+  }
+
   const status = Number.isInteger(err?.status) ? err.status : 500;
   const code =
     typeof err?.code === "string" ? err.code : "INTERNAL_SERVER_ERROR";

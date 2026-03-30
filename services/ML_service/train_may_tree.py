@@ -12,7 +12,7 @@ from era5_gam_weather.tree_features import TreeFeatureBuilder, TreeFeatureConfig
 from era5_gam_weather.tree_model import WeatherTreeTrainer
 
 YEAR = 2025
-MONTHS = [5]
+MONTHS = [4, 5]
 
 TRAIN_SAMPLES_PER_FILE = 30000
 EVAL_SAMPLES_PER_FILE = 8000
@@ -71,8 +71,8 @@ DATA_ROOT = PROJECT_ROOT / "data" / "era5"
 ARTIFACT_DIR = THIS_DIR / "artifacts"
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
-MODEL_PATH = ARTIFACT_DIR / "weather_tree_bundle_2025_05.joblib"
-METRICS_PATH = ARTIFACT_DIR / "eval_metrics_tree_2025_05.json"
+MODEL_PATH = ARTIFACT_DIR / "weather_tree_bundle_2025_04_05.joblib"
+METRICS_PATH = ARTIFACT_DIR / "eval_metrics_tree_2025_04_05.json"
 
 
 def _empty_feature_dict() -> Dict[str, list]:
