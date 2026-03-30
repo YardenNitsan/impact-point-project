@@ -24,11 +24,11 @@ REQUEST_TIMEOUT_SECONDS = float(os.getenv("REQUEST_TIMEOUT_SECONDS", "20"))
 
 MACHINE_BASE_URL = os.getenv(
     "MACHINE_BASE_URL",
-    "http://host.docker.internal:8001",
+    "http://ml:8000",
 )
 MACHINE_PREDICT_PATH = os.getenv(
     "MACHINE_PREDICT_PATH",
-    "/predict",
+    "/predict-weather-physics",
 )
 
 OPENMETEO_ARCHIVE_URL = os.getenv(

@@ -1,4 +1,10 @@
 node_modules
 dist
+.angular
 .git
 .env
+.vscode
+.idea
+coverage
+npm-debug.log*
+yarn-error.log*

@@ -5,5 +5,6 @@ export interface CreateSimulationBody {
   lat: number;
   lon: number;
   mass: number;
-  speed: number;
+  initialSpeed: number;
+  weather_source?: "machine" | "api" | "calculations";
 }

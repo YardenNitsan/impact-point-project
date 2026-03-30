@@ -10,7 +10,7 @@ export interface SimulationResultDocument extends mongoose.Document {
     alt: number;
   }[];
   durationSeconds: number;
-  weather_source: "machine" | "api";
+  weather_source: "machine" | "api" | "calculations";
   createdAt: Date;
 }
 
@@ -32,7 +32,7 @@ const SimulationResultSchema = new mongoose.Schema(
     },
     weather_source: {
       type: String,
-      enum: ["machine", "api"],
+      enum: ["machine", "api", "calculations"],
       required: true,
       default: "machine",
     },

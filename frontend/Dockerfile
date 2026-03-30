@@ -1,15 +1,12 @@
-FROM node:20
+FROM node:20-slim
 
 WORKDIR /app
 
 COPY package*.json ./
-
-RUN npm install
+RUN npm ci
 
 COPY . .
 
-RUN npm install -g @angular/cli@19
-
 EXPOSE 4200
 
-CMD ["ng","serve","--host","0.0.0.0"]
+CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--port", "4200"]

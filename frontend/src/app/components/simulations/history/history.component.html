@@ -5,7 +5,13 @@
       <div>Amount of time: {{ sim.formattedDuration }} minutes</div>
       <div>
         Weather Source:
-        {{ sim.weather_source === "machine" ? "Machine" : "API" }}
+        {{
+          sim.weather_source === "machine"
+            ? "Machine"
+            : sim.weather_source === "api"
+              ? "API"
+              : "Calculations"
+        }}
       </div>
     </div>
 

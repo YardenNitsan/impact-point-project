@@ -7,8 +7,11 @@ from typing import Dict, List, NotRequired, TypedDict
 
 from modules.aerodynamics.aero_tables import default_demo_table
 from modules.aerodynamics.aerodynamics import AeroRef
+from modules.atmosphere.calculated_weather_runtime import CalculatedWeatherRuntime
+from modules.atmosphere.environment import EnvironmentalConditions
 from modules.atmosphere.weather_client import (
     HTTPWeatherProviderClient,
+    ProviderWeatherSample,
     StaticWeatherProviderClient,
 )
 from modules.atmosphere.weather_runtime import (
@@ -132,26 +135,174 @@ def _has_manual_weather_override(initial_conditions: SimulationInput) -> bool:
     )
 
 
-def _select_weather_provider(initial_conditions: SimulationInput):
+def _build_manual_environment_override(
+    initial_conditions: SimulationInput,
+    azimuth_rad: float,
+) -> EnvironmentalConditions:
+    wind_x = float(initial_conditions["wind_x"])
+
+    wind_east = wind_x * math.sin(azimuth_rad)
+    wind_north = wind_x * math.cos(azimuth_rad)
+
+    return EnvironmentalConditions(
+        sea_level_temperature_K=float(initial_conditions["T0_K"]),
+        sea_level_pressure_Pa=float(initial_conditions["P0_Pa"]),
+        wind_east_10m_mps=wind_east,
+        wind_north_10m_mps=wind_north,
+        wind_east_100m_mps=wind_east,
+        wind_north_100m_mps=wind_north,
+        data_source="manual-calculations",
+        diagnostic_note="manual environment override with internal calculations",
+    )
+
+
+def _normalize_sim_datetime(sim_time: datetime | None) -> datetime:
+    if sim_time is None:
+        return datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    if sim_time.tzinfo is None:
+        return sim_time.replace(tzinfo=timezone.utc)
+    return sim_time.astimezone(timezone.utc)
+
+
+def _seed_environment_from_provider_sample(
+    *,
+    provider_sample: ProviderWeatherSample,
+    azimuth_rad: float,
+) -> EnvironmentalConditions:
+    note_parts: list[str] = [
+        f"seeded once from weather service source={provider_sample.source or 'api'}",
+    ]
+
+    if provider_sample.wind_east_10m_mps is not None and provider_sample.wind_north_10m_mps is not None:
+        east_10 = float(provider_sample.wind_east_10m_mps)
+        north_10 = float(provider_sample.wind_north_10m_mps)
+    elif provider_sample.wind_east_mps is not None and provider_sample.wind_north_mps is not None:
+        east_10 = float(provider_sample.wind_east_mps)
+        north_10 = float(provider_sample.wind_north_mps)
+        note_parts.append("10m wind seeded from general ENU wind fields")
+    else:
+        along = float(provider_sample.wind_x_mps or 0.0)
+        east_10 = along * math.sin(azimuth_rad)
+        north_10 = along * math.cos(azimuth_rad)
+        note_parts.append("10m wind seeded from along-track wind fallback")
+
+    if provider_sample.wind_east_100m_mps is not None and provider_sample.wind_north_100m_mps is not None:
+        east_100 = float(provider_sample.wind_east_100m_mps)
+        north_100 = float(provider_sample.wind_north_100m_mps)
+    else:
+        east_100 = east_10
+        north_100 = north_10
+        note_parts.append("100m wind missing from weather service; reused 10m seed")
+
+    if provider_sample.note:
+        note_parts.append(str(provider_sample.note))
+
+    return EnvironmentalConditions(
+        sea_level_temperature_K=float(provider_sample.temperature_K),
+        sea_level_pressure_Pa=float(provider_sample.pressure_Pa),
+        wind_east_10m_mps=float(east_10),
+        wind_north_10m_mps=float(north_10),
+        wind_east_100m_mps=float(east_100),
+        wind_north_100m_mps=float(north_100),
+        data_source=str(provider_sample.source or "api-seed"),
+        diagnostic_note=" | ".join(note_parts),
+    )
+
+
+def _fetch_calculations_seed_from_weather_service(
+    *,
+    launch_lat_deg: float,
+    launch_lon_deg: float,
+    initial_altitude_m: float,
+    azimuth_rad: float,
+    sim_time: datetime | None,
+) -> EnvironmentalConditions:
+    provider_client = HTTPWeatherProviderClient(
+        name="calculations-seed",
+        url=join_base_url_and_path(DEFAULT_WEATHER_SERVICE_URL, WEATHER_SERVICE_PATH),
+        timeout_s=DEFAULT_WEATHER_TIMEOUT_S,
+        requested_source="api",
+    )
+
+    seed_sample = provider_client.fetch(
+        lat=float(launch_lat_deg),
+        lon=float(launch_lon_deg),
+        alt=float(initial_altitude_m),
+        when=_normalize_sim_datetime(sim_time),
+    )
+
+    return _seed_environment_from_provider_sample(
+        provider_sample=seed_sample,
+        azimuth_rad=azimuth_rad,
+    )
+
+
+def _build_calculations_runtime(
+    *,
+    initial_conditions: SimulationInput,
+    launch_lat_deg: float,
+    launch_lon_deg: float,
+    initial_altitude_m: float,
+    azimuth_rad: float,
+    sim_time: datetime | None,
+) -> tuple[CalculatedWeatherRuntime, EnvironmentalConditions, str]:
     if _has_manual_weather_override(initial_conditions):
-        return StaticWeatherProviderClient(
+        env = _build_manual_environment_override(initial_conditions, azimuth_rad)
+        seed_fetch_count = 0
+    else:
+        env = _fetch_calculations_seed_from_weather_service(
+            launch_lat_deg=launch_lat_deg,
+            launch_lon_deg=launch_lon_deg,
+            initial_altitude_m=initial_altitude_m,
+            azimuth_rad=azimuth_rad,
+            sim_time=sim_time,
+        )
+        seed_fetch_count = 1
+
+    runtime = CalculatedWeatherRuntime(
+        environment=env,
+        azimuth_rad=azimuth_rad,
+        seed_fetch_count=seed_fetch_count,
+    )
+    return runtime, env, "calculations"
+
+
+def _build_service_runtime(
+    *,
+    initial_conditions: SimulationInput,
+    launch_lat_deg: float,
+    launch_lon_deg: float,
+    azimuth_rad: float,
+    sim_time: datetime | None,
+) -> tuple[TrajectoryWeatherRuntime, str]:
+    if _has_manual_weather_override(initial_conditions):
+        provider_client = StaticWeatherProviderClient(
             temperature_K=float(initial_conditions["T0_K"]),
             pressure_Pa=float(initial_conditions["P0_Pa"]),
             wind_x_mps=float(initial_conditions["wind_x"]),
             wind_z_mps=float(initial_conditions["wind_z"]),
-        ), "manual"
+        )
+        requested_source = "manual"
+    else:
+        requested_source = str(initial_conditions.get("weather_source", "machine")).lower()
+        if requested_source not in {"api", "machine"}:
+            raise ValueError("weather_source must be 'calculations', 'api', or 'machine'")
 
-    requested_source = str(initial_conditions.get("weather_source", "machine")).lower()
+        provider_client = HTTPWeatherProviderClient(
+            name=requested_source,
+            url=join_base_url_and_path(DEFAULT_WEATHER_SERVICE_URL, WEATHER_SERVICE_PATH),
+            timeout_s=DEFAULT_WEATHER_TIMEOUT_S,
+            requested_source=requested_source,
+        )
 
-    if requested_source not in {"api", "machine"}:
-        raise ValueError("weather_source must be 'api' or 'machine'")
-
-    return HTTPWeatherProviderClient(
-        name=requested_source,
-        url=join_base_url_and_path(DEFAULT_WEATHER_SERVICE_URL, WEATHER_SERVICE_PATH),
-        timeout_s=DEFAULT_WEATHER_TIMEOUT_S,
-        requested_source=requested_source,
-    ), requested_source
+    runtime = TrajectoryWeatherRuntime(
+        provider_client=provider_client,
+        launch_lat_deg=launch_lat_deg,
+        launch_lon_deg=launch_lon_deg,
+        azimuth_rad=azimuth_rad,
+        launch_datetime=sim_time,
+    )
+    return runtime, requested_source
 
 
 def simulate_impact(
@@ -193,14 +344,28 @@ def simulate_impact(
         else sim_time_raw
     )
 
-    provider_client, requested_source = _select_weather_provider(initial_conditions)
-    weather_runtime = TrajectoryWeatherRuntime(
-        provider_client=provider_client,
-        launch_lat_deg=launch_lat_deg,
-        launch_lon_deg=launch_lon_deg,
-        azimuth_rad=azimuth_rad,
-        launch_datetime=sim_time,
-    )
+    requested_mode = str(initial_conditions.get("weather_source", "machine")).lower()
+
+    if requested_mode == "calculations":
+        weather_runtime, seed_environment, requested_source = _build_calculations_runtime(
+            initial_conditions=initial_conditions,
+            launch_lat_deg=launch_lat_deg,
+            launch_lon_deg=launch_lon_deg,
+            initial_altitude_m=initial_altitude_m,
+            azimuth_rad=azimuth_rad,
+            sim_time=sim_time,
+        )
+        using_calculations = True
+    else:
+        weather_runtime, requested_source = _build_service_runtime(
+            initial_conditions=initial_conditions,
+            launch_lat_deg=launch_lat_deg,
+            launch_lon_deg=launch_lon_deg,
+            azimuth_rad=azimuth_rad,
+            sim_time=sim_time,
+        )
+        seed_environment = None
+        using_calculations = False
 
     sim_kwargs = dict(
         state0=state0,
@@ -218,6 +383,42 @@ def simulate_impact(
     sin_az = math.sin(azimuth_rad)
     cos_az = math.cos(azimuth_rad)
 
+    def sample_for_state(state: State3DOF) -> WeatherSample:
+        if using_calculations:
+            return weather_runtime.sample_for_state(state)
+        return weather_runtime.lookup_sample_for_x(state.x)
+
+    def build_environment_block(impact_sample: WeatherSample, runtime_summary: dict) -> Dict[str, float | str | int]:
+        if using_calculations:
+            assert seed_environment is not None
+            return {
+                "requested_source": requested_source,
+                "active_source": impact_sample.source,
+                "provider": impact_sample.provider,
+                "note": impact_sample.note,
+                "T0_K": float(seed_environment.sea_level_temperature_K),
+                "P0_Pa": float(seed_environment.sea_level_pressure_Pa),
+                "wind_x_mps": float(impact_sample.wind_x_mps),
+                "wind_z_mps": float(impact_sample.wind_z_mps),
+                "refresh_count": int(runtime_summary.get("refresh_count", 0)),
+                "fetch_count": int(runtime_summary.get("fetch_count", 0)),
+                "evaluate_count": int(runtime_summary.get("evaluate_count", 0)),
+            }
+
+        return {
+            "requested_source": requested_source,
+            "active_source": impact_sample.source,
+            "provider": impact_sample.provider,
+            "note": impact_sample.note,
+            "T0_K": impact_sample.temperature_K,
+            "P0_Pa": impact_sample.pressure_Pa,
+            "wind_x_mps": impact_sample.wind_x_mps,
+            "wind_z_mps": impact_sample.wind_z_mps,
+            "refresh_count": int(runtime_summary.get("refresh_count", 0)),
+            "fetch_count": int(runtime_summary.get("fetch_count", 0)),
+            "state_key": str(runtime_summary.get("state_key", "")),
+        }
+
     if not return_trajectory:
         impact_state, raw_points = run_simulation_impact_only(**sim_kwargs)
 
@@ -231,7 +432,7 @@ def simulate_impact(
         )
 
         physical_time_s = DEFAULT_TIME_STEP_S * (raw_points - 1)
-        impact_sample = weather_runtime.lookup_sample_for_x(impact_state.x)
+        impact_sample = sample_for_state(impact_state)
         runtime_summary = weather_runtime.summary()
 
         return {
@@ -246,19 +447,7 @@ def simulate_impact(
             },
             "physical_time": physical_time_s,
             "raw_points_count": raw_points,
-            "environment": {
-                "requested_source": requested_source,
-                "active_source": impact_sample.source,
-                "provider": impact_sample.provider,
-                "note": impact_sample.note,
-                "T0_K": impact_sample.temperature_K,
-                "P0_Pa": impact_sample.pressure_Pa,
-                "wind_x_mps": impact_sample.wind_x_mps,
-                "wind_z_mps": impact_sample.wind_z_mps,
-                "refresh_count": int(runtime_summary.get("refresh_count", 0)),
-                "fetch_count": int(runtime_summary.get("fetch_count", 0)),
-                "state_key": str(runtime_summary.get("state_key", "")),
-            },
+            "environment": build_environment_block(impact_sample, runtime_summary),
         }
 
     impact_state, sampled_states, raw_points = run_simulation_sampled(
@@ -277,7 +466,7 @@ def simulate_impact(
             launch_lat_deg,
             launch_lon_deg,
         )
-        point_sample = weather_runtime.lookup_sample_for_x(s.x)
+        point_sample = sample_for_state(s)
         trajectory_path.append(
             {
                 "lat": lat,
@@ -299,7 +488,7 @@ def simulate_impact(
         launch_lon_deg,
     )
 
-    impact_sample = weather_runtime.lookup_sample_for_x(impact_state.x)
+    impact_sample = sample_for_state(impact_state)
     impact_point: TrajectoryPoint = {
         "lat": impact_lat,
         "lon": impact_lon,
@@ -324,16 +513,5 @@ def simulate_impact(
         "physical_time": physical_time_s,
         "points_count": len(trajectory_path),
         "raw_points_count": raw_points,
-        "environment": {
-            "requested_source": requested_source,
-            "active_source": impact_sample.source,
-            "provider": impact_sample.provider,
-            "note": impact_sample.note,
-            "T0_K": impact_sample.temperature_K,
-            "P0_Pa": impact_sample.pressure_Pa,
-            "wind_x_mps": impact_sample.wind_x_mps,
-            "wind_z_mps": impact_sample.wind_z_mps,
-            "refresh_count": int(runtime_summary.get("refresh_count", 0)),
-            "fetch_count": int(runtime_summary.get("fetch_count", 0)),
-            "state_key": str(runtime_summary.get("state_key", "")),        },
+        "environment": build_environment_block(impact_sample, runtime_summary),
     }

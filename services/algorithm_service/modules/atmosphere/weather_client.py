@@ -15,8 +15,15 @@ class ProviderWeatherSample:
     wind_z_mps: float | None
     wind_east_mps: float | None
     wind_north_mps: float | None
-    source: str
-    provider: str
+
+    # Optional richer seed fields for calculations mode.
+    wind_east_10m_mps: float | None = None
+    wind_north_10m_mps: float | None = None
+    wind_east_100m_mps: float | None = None
+    wind_north_100m_mps: float | None = None
+
+    source: str = ""
+    provider: str = ""
     note: str = ""
 
 
@@ -48,6 +55,10 @@ class StaticWeatherProviderClient:
             wind_z_mps=float(wind_z_mps),
             wind_east_mps=None,
             wind_north_mps=None,
+            wind_east_10m_mps=None,
+            wind_north_10m_mps=None,
+            wind_east_100m_mps=None,
+            wind_north_100m_mps=None,
             source=source,
             provider=provider,
             note=note,
@@ -90,7 +101,7 @@ class HTTPWeatherProviderClient:
         if self.requested_source is not None:
             payload["source"] = self.requested_source
 
-        should_log_api = self.requested_source == "api" or self.name == "api"
+        should_log_api = self.requested_source == "api" or self.name == "api" or self.name == "calculations-seed"
 
         if should_log_api:
             print("\n========== WEATHER API REQUEST ==========")
@@ -153,6 +164,30 @@ class HTTPWeatherProviderClient:
                 "v_north_mps",
                 "v",
                 "wind_north_mps",
+            ),
+            wind_east_10m_mps=_pick_optional_float(
+                body,
+                "wind_u_east_10m_mps",
+                "u_east_10m_mps",
+                "wind_east_10m_mps",
+            ),
+            wind_north_10m_mps=_pick_optional_float(
+                body,
+                "wind_v_north_10m_mps",
+                "v_north_10m_mps",
+                "wind_north_10m_mps",
+            ),
+            wind_east_100m_mps=_pick_optional_float(
+                body,
+                "wind_u_east_100m_mps",
+                "u_east_100m_mps",
+                "wind_east_100m_mps",
+            ),
+            wind_north_100m_mps=_pick_optional_float(
+                body,
+                "wind_v_north_100m_mps",
+                "v_north_100m_mps",
+                "wind_north_100m_mps",
             ),
             source=source_used,
             provider=provider_used,

@@ -8,7 +8,7 @@ export interface SimulationHistoryItem {
   id: string;
   createdAt: string;
   durationSeconds: number;
-  weather_source: 'machine' | 'api';
+  weather_source: 'machine' | 'api' | 'calculations';
   formattedDuration?: string;
 }
 

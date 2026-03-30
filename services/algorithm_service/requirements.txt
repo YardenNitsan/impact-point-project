@@ -1,8 +1,8 @@
-fastapi
-uvicorn
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
 numpy
 matplotlib
 requests
-pydantic
+pydantic==2.11.3
 xarray
 netCDF4
