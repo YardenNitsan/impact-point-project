@@ -59,7 +59,7 @@ export const createSimulation = async (req: Request, res: Response) => {
   const physicsPayload = {
     ...normalizedInput,
     return_trajectory: true,
-    sample_dx_m: chooseSampleDx(normalizedInput),
+    dx_sample_m: chooseSampleDx(normalizedInput),
   };
 
   try {

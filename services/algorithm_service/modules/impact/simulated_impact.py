@@ -77,6 +77,109 @@ DEFAULT_GRAVITY_MPS2: float = 9.81
 DEFAULT_CENTER_OF_GRAVITY_OFFSET: float = 0.02
 GROUND_ALTITUDE_M: float = 0.0
 
+MIN_OUTPUT_TRAJECTORY_POINTS: int = 350
+MAX_OUTPUT_TRAJECTORY_POINTS: int = 700
+OUTPUT_TRAJECTORY_SPACING_M: float = 25.0
+
+
+def _lerp(a: float, b: float, alpha: float) -> float:
+    return a + (b - a) * alpha
+
+
+def _interpolate_state(a: State3DOF, b: State3DOF, alpha: float) -> State3DOF:
+    return State3DOF(
+        x=_lerp(a.x, b.x, alpha),
+        z=_lerp(a.z, b.z, alpha),
+        vx=_lerp(a.vx, b.vx, alpha),
+        vz=_lerp(a.vz, b.vz, alpha),
+        theta=_lerp(a.theta, b.theta, alpha),
+        q=_lerp(a.q, b.q, alpha),
+    )
+
+
+def _build_cumulative_path_lengths(states: List[State3DOF]) -> List[float]:
+    if not states:
+        return []
+
+    lengths: List[float] = [0.0]
+
+    for i in range(1, len(states)):
+        dx = float(states[i].x - states[i - 1].x)
+        dz = float(states[i].z - states[i - 1].z)
+        lengths.append(lengths[-1] + math.hypot(dx, dz))
+
+    return lengths
+
+
+def _resample_states_to_target_count(
+    states: List[State3DOF],
+    target_count: int,
+) -> List[State3DOF]:
+    if len(states) <= target_count:
+        return states[:]
+
+    if target_count <= 2:
+        return [states[0], states[-1]]
+
+    cumulative_lengths = _build_cumulative_path_lengths(states)
+    total_length = cumulative_lengths[-1]
+
+    if not math.isfinite(total_length) or total_length <= 0.0:
+        step = max(1, math.ceil((len(states) - 1) / max(1, target_count - 1)))
+        reduced = [states[i] for i in range(0, len(states), step)]
+        if reduced[-1] != states[-1]:
+            reduced.append(states[-1])
+        return reduced[:target_count]
+
+    output: List[State3DOF] = [states[0]]
+    segment_index = 0
+
+    for i in range(1, target_count - 1):
+        target_length = (total_length * i) / (target_count - 1)
+
+        while (
+            segment_index < len(states) - 2
+            and cumulative_lengths[segment_index + 1] < target_length
+        ):
+            segment_index += 1
+
+        start_state = states[segment_index]
+        end_state = states[segment_index + 1]
+
+        start_length = cumulative_lengths[segment_index]
+        end_length = cumulative_lengths[segment_index + 1]
+        segment_length = end_length - start_length
+
+        if segment_length <= 0.0:
+            output.append(start_state)
+            continue
+
+        alpha = (target_length - start_length) / segment_length
+        alpha = max(0.0, min(1.0, alpha))
+        output.append(_interpolate_state(start_state, end_state, alpha))
+
+    output.append(states[-1])
+    return output
+
+
+def _compress_trajectory_states(states: List[State3DOF]) -> List[State3DOF]:
+    if len(states) <= MAX_OUTPUT_TRAJECTORY_POINTS:
+        return states
+
+    cumulative_lengths = _build_cumulative_path_lengths(states)
+    total_length = cumulative_lengths[-1] if cumulative_lengths else 0.0
+
+    target_count = int(total_length / OUTPUT_TRAJECTORY_SPACING_M) + 1
+    target_count = max(
+        MIN_OUTPUT_TRAJECTORY_POINTS,
+        min(MAX_OUTPUT_TRAJECTORY_POINTS, target_count),
+    )
+
+    if len(states) <= target_count:
+        return states
+
+    return _resample_states_to_target_count(states, target_count)
+
 AERO_TABLE = default_demo_table()
 AERO_REF = AeroRef(
     reference_area=DEFAULT_REFERENCE_AREA_M2,
@@ -309,7 +412,7 @@ def simulate_impact(
     initial_conditions: SimulationInput,
     environment_override=None,
     return_trajectory: bool = False,
-    dx_sample_m: float = 2.0,
+    dx_sample_m: float = 5.0,
 ) -> SimulationOutput:
     del environment_override
 
@@ -454,6 +557,7 @@ def simulate_impact(
         **sim_kwargs,
         dx_sample_m=dx_sample_m,
     )
+    sampled_states = _compress_trajectory_states(sampled_states)
 
     trajectory_path: List[TrajectoryPoint] = []
 

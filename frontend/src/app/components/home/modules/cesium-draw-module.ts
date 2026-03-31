@@ -2,6 +2,7 @@ import {
   CallbackProperty,
   Cartesian3,
   Cartographic,
+  ConstantProperty,
   Color,
   Entity,
   ExtrapolationType,
@@ -70,6 +71,9 @@ const LABEL_PIXEL_OFFSET_Y = -12;
 
 const TERRAIN_CACHE_MAX_KEYS = 32;
 const terrainCache = new Map<string, number[]>();
+
+const TRACKED_VIEW_FROM = new Cartesian3(-1500.0, 0.0, 900.0);
+const TRACKED_VIEW_FROM_PROPERTY = new ConstantProperty(TRACKED_VIEW_FROM);
 
 function terrainCacheGet(key: string): number[] | undefined {
   const simulation_path = terrainCache.get(key);
@@ -328,12 +332,19 @@ export async function drawTrajectoryLOD(
 
   // terrain
   // full positions
+  const terrainHeightsMeters = await sampleTerrainFastCached(
+    viewer,
+    rawPoints,
+    trajectoryCacheKey,
+  );
+
   const fullTrajectoryPositions: Cartesian3[] = [];
   fullTrajectoryPositions.length = rawPoints.length;
 
   for (let i = 0; i < rawPoints.length; i++) {
     const point = rawPoints[i];
-    const height = Number(point.alt ?? 0);
+    const terrain = terrainHeightsMeters[i] ?? 0;
+    const height = terrain + Number(point.alt ?? 0);
 
     fullTrajectoryPositions[i] = Cartesian3.fromDegrees(
       point.lon,
@@ -422,6 +433,7 @@ export async function drawTrajectoryLOD(
     const carto = Cartographic.fromCartesian(pos);
     const lat = CesiumMath.toDegrees(carto.latitude);
     const lon = CesiumMath.toDegrees(carto.longitude);
+    const terrain = viewer.scene.globe.getHeight(carto) ?? 0;
     const alt = carto.height;
 
     return `lat: ${lat.toFixed(6)}\nlon: ${lon.toFixed(6)}\nalt: ${alt.toFixed(1)} m`;
@@ -439,7 +451,7 @@ export async function drawTrajectoryLOD(
     pixelOffset: new Cartesian2(LABEL_PIXEL_OFFSET_X, LABEL_PIXEL_OFFSET_Y),
     showBackground: true,
     backgroundColor: Color.BLACK.withAlpha(0.55),
-    disableDepthTestDistance: Number.POSITIVE_INFINITY,
+    disableDepthTestDistance: 0,
     scaleByDistance: new NearFarScalar(
       LABEL_SCALE_NEAR_DISTANCE,
       LABEL_SCALE_NEAR_VALUE,
@@ -451,17 +463,19 @@ export async function drawTrajectoryLOD(
   if (!handles.movingEntity) {
     handles.movingEntity = viewer.entities.add({
       position: handles.movingProperty,
+      viewFrom: TRACKED_VIEW_FROM_PROPERTY,
       point: {
         pixelSize: MOVING_POINT_PIXEL_SIZE,
         color: Color.RED,
         heightReference: HeightReference.NONE,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        disableDepthTestDistance: 0,
       },
       orientation: new VelocityOrientationProperty(handles.movingProperty),
       label: movingLabel,
     });
   } else {
     handles.movingEntity.position = handles.movingProperty;
+    handles.movingEntity.viewFrom = TRACKED_VIEW_FROM_PROPERTY;
     handles.movingEntity.orientation = new VelocityOrientationProperty(
       handles.movingProperty,
     );
