@@ -40,27 +40,27 @@ export class FormComponent {
     mass: new FormControl('', [
       Validators.required,
       Validators.min(1),
-      Validators.max(5000),
+      Validators.max(600),
     ]),
     speed: new FormControl('', [
       Validators.required,
       Validators.min(1),
-      Validators.max(1200),
+      Validators.max(343),
     ]),
     elevation: new FormControl('', [
       Validators.required,
       Validators.min(-35),
-      Validators.max(85),
+      Validators.max(45),
     ]),
     azimuth: new FormControl('', [
       Validators.required,
       Validators.min(0),
-      Validators.max(360),
+      Validators.max(359),
     ]),
     alt: new FormControl('', [
       Validators.required,
       Validators.min(1),
-      Validators.max(20000),
+      Validators.max(16000),
     ]),
     lat: new FormControl('', [
       Validators.required,

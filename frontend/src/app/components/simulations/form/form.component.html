@@ -10,8 +10,8 @@
           type="number"
           formControlName="alt"
           min="1"
-          max="20000"
-          placeholder="1 - 20,000 m"
+          max="16000"
+          placeholder="1 - 16,000 m"
         />
         <div
           class="error"
@@ -29,7 +29,7 @@
               trajectoryForm.get('alt')?.errors?.['max']
             "
           >
-            Altitude must be between 1 and 20,000 meters
+            Altitude must be between 1 and 16,000 meters
           </span>
         </div>
       </div>
@@ -40,8 +40,8 @@
           type="number"
           formControlName="azimuth"
           min="0"
-          max="360"
-          placeholder="0 - 360°"
+          max="359"
+          placeholder="0 - 359°"
         />
         <div
           class="error"
@@ -59,7 +59,7 @@
               trajectoryForm.get('azimuth')?.errors?.['max']
             "
           >
-            Azimuth must be between 0 and 360 degrees
+            Azimuth must be between 0 and 359 degrees
           </span>
         </div>
       </div>
@@ -70,8 +70,8 @@
           type="number"
           formControlName="elevation"
           min="-35"
-          max="85"
-          placeholder="-35 to 85°"
+          max="45"
+          placeholder="-35 to 45°"
         />
         <div
           class="error"
@@ -89,7 +89,7 @@
               trajectoryForm.get('elevation')?.errors?.['max']
             "
           >
-            Elevation must be between -35 and 85 degrees
+            Elevation must be between -35 and 45 degrees
           </span>
         </div>
       </div>
@@ -160,8 +160,8 @@
           type="number"
           formControlName="mass"
           min="1"
-          max="5000"
-          placeholder="1 - 5000 kg"
+          max="600"
+          placeholder="1 - 600 kg"
         />
         <div
           class="error"
@@ -179,7 +179,7 @@
               trajectoryForm.get('mass')?.errors?.['max']
             "
           >
-            Mass must be between 1 and 5000 kg
+            Mass must be between 1 and 600 kg
           </span>
         </div>
       </div>
@@ -190,8 +190,8 @@
           type="number"
           formControlName="speed"
           min="1"
-          max="1200"
-          placeholder="1 - 1200 m/s"
+          max="343"
+          placeholder="1 - 343 m/s"
         />
         <div
           class="error"
@@ -209,7 +209,7 @@
               trajectoryForm.get('speed')?.errors?.['max']
             "
           >
-            Speed must be between 1 and 1200 m/s
+            Speed must be between 1 and 343 m/s
           </span>
         </div>
       </div>

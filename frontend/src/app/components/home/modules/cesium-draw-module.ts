@@ -434,7 +434,7 @@ export async function drawTrajectoryLOD(
     const lat = CesiumMath.toDegrees(carto.latitude);
     const lon = CesiumMath.toDegrees(carto.longitude);
     const terrain = viewer.scene.globe.getHeight(carto) ?? 0;
-    const alt = carto.height;
+    const alt = carto.height - terrain;
 
     return `lat: ${lat.toFixed(6)}\nlon: ${lon.toFixed(6)}\nalt: ${alt.toFixed(1)} m`;
   }, false);
@@ -470,15 +470,11 @@ export async function drawTrajectoryLOD(
         heightReference: HeightReference.NONE,
         disableDepthTestDistance: 0,
       },
-      orientation: new VelocityOrientationProperty(handles.movingProperty),
       label: movingLabel,
     });
   } else {
     handles.movingEntity.position = handles.movingProperty;
     handles.movingEntity.viewFrom = TRACKED_VIEW_FROM_PROPERTY;
-    handles.movingEntity.orientation = new VelocityOrientationProperty(
-      handles.movingProperty,
-    );
     handles.movingEntity.label = movingLabel;
   }
 
