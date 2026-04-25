@@ -9,6 +9,7 @@ const boundedNumber = (name: string, min: number, max: number) =>
           ? `${name} is required`
           : `${name} must be a number`,
     })
+    .finite(`${name} must be a finite number`)
     .min(min, `${name} must be >= ${min}`)
     .max(max, `${name} must be <= ${max}`);
 
@@ -30,6 +31,9 @@ export const createSimulationBodySchema = z
 const objectIdParamSchema = z.object({
   id: z.string().regex(/^[a-f\d]{24}$/i, "id must be a valid Mongo ObjectId"),
 });
+
+export type CreateSimulationBody = z.infer<typeof createSimulationBodySchema>;
+export type ObjectIdParam = z.infer<typeof objectIdParamSchema>;
 
 export function validateCreateSimulation(
   req: Request,

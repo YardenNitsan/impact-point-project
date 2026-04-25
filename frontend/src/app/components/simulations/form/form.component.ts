@@ -14,6 +14,18 @@ import { SharedService } from '../../services/shared.service';
 import { Coordinate } from '../../models/coordinate.model';
 import { SimulationHistoryService } from '../history/history-services/simulationHistory.service';
 import { SimulationTokenService } from '../../services/simulation-token.service';
+import { SimulationRegistryService } from '../../services/simulation-registry.service';
+
+type CreateSimulationResponse = {
+  success: true;
+  simulation: {
+    id: string;
+    createdAt: string;
+    durationSeconds: number;
+    weather_source: 'machine' | 'api' | 'calculations';
+  };
+  accessToken: string;
+};
 
 @Component({
   selector: 'app-form',
@@ -34,18 +46,19 @@ export class FormComponent {
     private router: Router,
     private simulationService: SimulationHistoryService,
     private tokenService: SimulationTokenService,
+    private registryService: SimulationRegistryService,
   ) {}
 
   trajectoryForm = new FormGroup({
     mass: new FormControl('', [
       Validators.required,
       Validators.min(1),
-      Validators.max(600),
+      Validators.max(800),
     ]),
     speed: new FormControl('', [
       Validators.required,
       Validators.min(1),
-      Validators.max(343),
+      Validators.max(514),
     ]),
     elevation: new FormControl('', [
       Validators.required,
@@ -60,7 +73,7 @@ export class FormComponent {
     alt: new FormControl('', [
       Validators.required,
       Validators.min(1),
-      Validators.max(16000),
+      Validators.max(19000),
     ]),
     lat: new FormControl('', [
       Validators.required,
@@ -107,9 +120,10 @@ export class FormComponent {
     };
 
     this.http
-      .post(environment.SIMULATION_REQUEST_URL, payload, {
-        observe: 'response',
-      })
+      .post<CreateSimulationResponse>(
+        environment.SIMULATION_REQUEST_URL,
+        payload,
+      )
       .pipe(
         finalize(() => {
           this.loading = false;
@@ -117,14 +131,12 @@ export class FormComponent {
         }),
       )
       .subscribe({
-        next: (response) => {
-          console.log('Server Response', response);
+        next: (body) => {
+          this.simulationId = body?.simulation?.id;
 
-          const body = response.body as any;
-          this.simulationId = body?.resultId;
-
-          if (body?.resultId && body?.accessToken) {
-            this.tokenService.saveToken(body.resultId, body.accessToken);
+          if (body?.simulation?.id && body?.accessToken) {
+            this.tokenService.saveToken(body.simulation.id, body.accessToken);
+            this.registryService.saveSimulation(body.simulation);
           }
 
           this.showSuccessModal = true;

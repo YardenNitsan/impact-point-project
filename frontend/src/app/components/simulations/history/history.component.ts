@@ -43,15 +43,16 @@ export class HistoryComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroyed$))
       .subscribe({
         next: (data) => {
-          console.log(data);
-
           this.simulations = data.map((sim) => ({
             ...sim,
             formattedDuration: this.formatTime(sim.durationSeconds),
           }));
 
-          this.shouldScroll = data.length > this.cardsToNotScroll;
-          this.countSim.emit(this.simulations.length);
+          this.shouldScroll = this.simulations.length > this.cardsToNotScroll;
+
+          queueMicrotask(() => {
+            this.countSim.emit(this.simulations.length);
+          });
         },
         error: (err) => {
           console.error('Failed to load simulations', err);
@@ -67,7 +68,9 @@ export class HistoryComponent implements OnInit, OnDestroy {
         next: () => {
           this.simulations = this.simulations.filter((sim) => sim.id !== id);
           this.shouldScroll = this.simulations.length > this.cardsToNotScroll;
-          this.countSim.emit(this.simulations.length);
+          queueMicrotask(() => {
+            this.countSim.emit(this.simulations.length);
+          });
         },
         error: (err) => {
           console.error('Failed to delete simulation', err);
@@ -86,7 +89,6 @@ export class HistoryComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroyed$))
       .subscribe({
         next: (coords: Coordinate[]) => {
-          console.log('WATCH RESPONSE:', coords);
           this.shared.setData(coords);
           this.router.navigateByUrl('/');
         },

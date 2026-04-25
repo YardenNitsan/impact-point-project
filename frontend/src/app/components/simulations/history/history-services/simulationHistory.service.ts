@@ -5,12 +5,12 @@ import { tap } from 'rxjs/operators';
 import { Coordinate } from '../../../models/coordinate.model';
 import { environment } from '../../../../../../environment';
 import { SimulationTokenService } from '../../../services/simulation-token.service';
+import {
+  SimulationRegistryService,
+  StoredSimulation,
+} from '../../../services/simulation-registry.service';
 
-export interface SimulationHistoryItem {
-  id: string;
-  createdAt: string;
-  durationSeconds: number;
-  weather_source: 'machine' | 'api' | 'calculations';
+export interface SimulationHistoryItem extends StoredSimulation {
   formattedDuration?: string;
 }
 
@@ -19,12 +19,11 @@ export class SimulationHistoryService {
   constructor(
     private http: HttpClient,
     private tokenService: SimulationTokenService,
+    private registryService: SimulationRegistryService,
   ) {}
 
   getSimulations(): Observable<SimulationHistoryItem[]> {
-    return this.http.get<SimulationHistoryItem[]>(
-      environment.SIMULATION_REQUEST_URL,
-    );
+    return this.registryService.simulations$;
   }
 
   private tokenHeaders(id: string): HttpHeaders {
@@ -32,7 +31,7 @@ export class SimulationHistoryService {
 
     if (!token) {
       throw new Error(
-        'No access token stored for this simulation. Create it again after the new security fix.',
+        'No access token stored for this simulation in this browser.',
       );
     }
 
@@ -55,6 +54,7 @@ export class SimulationHistoryService {
       .pipe(
         tap(() => {
           this.tokenService.removeToken(id);
+          this.registryService.removeSimulation(id);
         }),
       );
   }

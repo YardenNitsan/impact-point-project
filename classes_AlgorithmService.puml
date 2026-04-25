@@ -1,0 +1,235 @@
+@startuml classes_AlgorithmService
+set namespaceSeparator none
+class "AeroCoeffsTable" as algorithm_service.modules.aerodynamics.aero_tables.AeroCoeffsTable {
+  CD : float
+  CL : float
+  CM0 : float
+  Cm_alpha : float
+  Cmq : float
+}
+class "AeroRef" as algorithm_service.modules.aerodynamics.aerodynamics.AeroRef {
+  reference_area : float
+  reference_length : float
+}
+class "AeroTable2D" as algorithm_service.modules.aerodynamics.aero_tables.AeroTable2D {
+  alpha_grid : Sequence[float]
+  data : Sequence[Sequence[AeroCoeffsTable]]
+  mach_grid : Sequence[float]
+  idx_pair(interpolation_grid: Sequence[float], query_value: float) -> Tuple[int, int, float]
+  lookup(alpha: float, mach: float) -> AeroCoeffsTable
+}
+class "AlongTrackWindShearModel" as algorithm_service.modules.atmosphere.wind.AlongTrackWindShearModel {
+  azimuth_rad : float
+  compute_wind_at_altitude(altitude_m: float) -> Tuple[float, float]
+  get_profile_metadata() -> WindProfileMeta
+}
+class "CalculatedWeatherRuntime" as algorithm_service.modules.atmosphere.calculated_weather_runtime.CalculatedWeatherRuntime {
+  azimuth_rad : float
+  environment
+  evaluate_count : int
+  seed_fetch_count : int
+  get_sample() -> WeatherSample
+  sample_for_altitude(altitude_m: float) -> WeatherSample
+  sample_for_state(state: State3DOF) -> WeatherSample
+  summary() -> dict
+}
+class "DeterministicWindModel" as algorithm_service.modules.solver.run_simulation.DeterministicWindModel {
+  wind_at_height(z_m: float) -> WindXZ
+}
+class "EnvironmentalConditions" as algorithm_service.modules.atmosphere.environment.EnvironmentalConditions {
+  data_source : str
+  diagnostic_note : str
+  sea_level_pressure_Pa : float
+  sea_level_temperature_K : float
+  wind_east_100m_mps : float
+  wind_east_10m_mps : float
+  wind_north_100m_mps : float
+  wind_north_10m_mps : float
+}
+class "HTTPWeatherProviderClient" as algorithm_service.modules.atmosphere.weather_client.HTTPWeatherProviderClient {
+  is_static : bool
+  name : str
+  requested_source : NoneType, str
+  session : Session
+  timeout_s : float
+  url
+  fetch() -> ProviderWeatherSample
+}
+class "ImpactResult" as algorithm_service.modules.impact.impact.ImpactResult {
+  index_after : int
+  index_before : int
+  interpolation_fraction : float
+  state_at_impact
+}
+class "ProviderWeatherSample" as algorithm_service.modules.atmosphere.weather_client.ProviderWeatherSample {
+  note : str
+  pressure_Pa : float
+  provider : str
+  source : str
+  temperature_K : float
+  wind_east_100m_mps : float | None
+  wind_east_10m_mps : float | None
+  wind_east_mps : float | None
+  wind_north_100m_mps : float | None
+  wind_north_10m_mps : float | None
+  wind_north_mps : float | None
+  wind_x_mps : float | None
+  wind_z_mps : float | None
+}
+class "RigidBodyState3DOF" as algorithm_service.modules.dynamics.dynamics_3dof.RigidBodyState3DOF {
+  pitch_angle_rad : float
+  pitch_rate_radps : float
+  x_position_m : float
+  x_velocity_mps : float
+  z_altitude_m : float
+  z_velocity_mps : float
+}
+class "RigidBodyStateDerivatives3DOF" as algorithm_service.modules.dynamics.dynamics_3dof.RigidBodyStateDerivatives3DOF {
+  pitch_acceleration_radps2 : float
+  pitch_angle_rate_radps : float
+  x_acceleration_mps2 : float
+  x_position_rate_mps : float
+  z_acceleration_mps2 : float
+  z_altitude_rate_mps : float
+}
+class "SimulationInput" as algorithm_service.main.SimulationInput {
+  P0_Pa : float | None
+  T0_K : float | None
+  alt : Optional[float]
+  azimuth : Optional[float]
+  elevation : Optional[float]
+  initialSpeed : Optional[float]
+  lat : Optional[float]
+  lon : Optional[float]
+  mass : Optional[float]
+  return_trajectory : Optional[bool]
+  sample_dx_m : Optional[float]
+  sim_datetime : str | None
+  weather_source : Optional[Literal['api', 'machine', 'calculations']]
+  wind_x : float | None
+  wind_z : float | None
+}
+class "SimulationInput" as algorithm_service.modules.impact.simulated_impact.SimulationInput {
+  P0_Pa : NotRequired[float]
+  T0_K : NotRequired[float]
+  alt : float
+  azimuth : float
+  elevation : float
+  initialSpeed : float
+  lat : float
+  lon : float
+  mass : float
+  sim_datetime : NotRequired[str | datetime]
+  weather_source : NotRequired[str]
+  wind_x : NotRequired[float]
+  wind_z : NotRequired[float]
+}
+class "SimulationOutput" as algorithm_service.modules.impact.simulated_impact.SimulationOutput {
+  environment : Dict[str, float | str | int]
+  impact
+  physical_time : float
+  points_count : NotRequired[int]
+  raw_points_count : int
+  trajectory : NotRequired[List[TrajectoryPoint]]
+}
+class "State3DOF" as algorithm_service.modules.state.state.State3DOF {
+  q : float
+  theta : float
+  vx : float
+  vz : float
+  x : float
+  z : float
+  as_tuple() -> Tuple[float, float, float, float, float, float]
+}
+class "StateDerivatives3DOF" as algorithm_service.modules.state.state.StateDerivatives3DOF {
+  q : float
+  theta : float
+  vx : float
+  vz : float
+  x : float
+  z : float
+  as_tuple() -> Tuple[float, float, float, float, float, float]
+}
+class "StaticWeatherProviderClient" as algorithm_service.modules.atmosphere.weather_client.StaticWeatherProviderClient {
+  is_static : bool
+  fetch() -> ProviderWeatherSample
+}
+class "StepWindModel" as algorithm_service.modules.solver.run_simulation.StepWindModel {
+  ut : float
+  wt : float
+  step(z_m: float, airspeed_mps: float, dt_s: float) -> WindXZ
+}
+class "TrajectoryPoint" as algorithm_service.modules.impact.simulated_impact.TrajectoryPoint {
+  alt : float
+  lat : float
+  lon : float
+  pressure_Pa : float
+  temperature_K : float
+  theta : float
+  vx : float
+  vz : float
+  wind_along_track_mps : float
+  wind_u_east_mps : float
+  wind_v_north_mps : float
+  wind_vertical_mps : float
+}
+class "TrajectoryWeatherRuntime" as algorithm_service.modules.atmosphere.weather_runtime.TrajectoryWeatherRuntime {
+  azimuth_rad : float
+  history : List[WeatherFetchRecord]
+  launch_datetime : datetime
+  launch_lat_deg : float
+  launch_lon_deg : float
+  provider_client
+  refresh_count : int
+  get_sample() -> WeatherSample
+  lookup_sample_for_x(x_m: float) -> WeatherSample
+  summary() -> dict
+}
+class "WeatherFetchRecord" as algorithm_service.modules.atmosphere.weather_runtime.WeatherFetchRecord {
+  altitude_m : float
+  elapsed_time_s : float
+  lat_deg : float
+  lon_deg : float
+  sample
+  state_key : str
+  x_m : float
+}
+class "WeatherProvider" as algorithm_service.modules.atmosphere.weather_client.WeatherProvider {
+  is_static : bool
+  fetch() -> ProviderWeatherSample
+}
+class "WeatherSample" as algorithm_service.modules.atmosphere.weather_runtime.WeatherSample {
+  note : str
+  pressure_Pa : float
+  provider : str
+  source : str
+  temperature_K : float
+  wind_east_mps : float
+  wind_north_mps : float
+  wind_x_mps : float
+  wind_z_mps : float
+}
+class "WindProfileMeta" as algorithm_service.modules.atmosphere.wind.WindProfileMeta {
+  shear_exponent : float
+  wind_along_track_100m_mps : float
+  wind_along_track_10m_mps : float
+}
+algorithm_service.modules.atmosphere.weather_runtime.TrajectoryWeatherRuntime --> algorithm_service.modules.atmosphere.weather_runtime.WeatherFetchRecord : history
+algorithm_service.modules.atmosphere.weather_runtime.WeatherFetchRecord --> algorithm_service.modules.atmosphere.weather_runtime.WeatherSample : sample
+algorithm_service.modules.impact.simulated_impact.SimulationOutput --> algorithm_service.modules.impact.simulated_impact.TrajectoryPoint : impact
+
+algorithm_service.modules.atmosphere.weather_client.WeatherProvider <|.. algorithm_service.modules.atmosphere.weather_client.HTTPWeatherProviderClient
+algorithm_service.modules.atmosphere.weather_client.WeatherProvider <|.. algorithm_service.modules.atmosphere.weather_client.StaticWeatherProviderClient
+
+algorithm_service.modules.atmosphere.weather_runtime.TrajectoryWeatherRuntime o-- algorithm_service.modules.atmosphere.weather_runtime.WeatherFetchRecord : history
+algorithm_service.modules.atmosphere.weather_runtime.WeatherFetchRecord *-- algorithm_service.modules.atmosphere.weather_runtime.WeatherSample : sample
+algorithm_service.modules.atmosphere.weather_runtime.TrajectoryWeatherRuntime ..> algorithm_service.modules.atmosphere.weather_client.WeatherProvider : provider_client
+
+algorithm_service.modules.atmosphere.calculated_weather_runtime.CalculatedWeatherRuntime --> algorithm_service.modules.atmosphere.environment.EnvironmentalConditions : environment
+algorithm_service.modules.atmosphere.calculated_weather_runtime.CalculatedWeatherRuntime ..> algorithm_service.modules.state.state.State3DOF : sample_for_state(state)
+algorithm_service.modules.atmosphere.calculated_weather_runtime.CalculatedWeatherRuntime ..> algorithm_service.modules.atmosphere.weather_runtime.WeatherSample : returns
+
+algorithm_service.modules.atmosphere.weather_client.HTTPWeatherProviderClient ..> algorithm_service.modules.atmosphere.weather_client.ProviderWeatherSample : fetch()
+algorithm_service.modules.atmosphere.weather_client.StaticWeatherProviderClient *-- algorithm_service.modules.atmosphere.weather_client.ProviderWeatherSample : _sample
+algorithm_service.modules.atmosphere.weather_client.StaticWeatherProviderClient ..> algorithm_service.modules.atmosphere.weather_client.ProviderWeatherSample : fetch()
+@enduml

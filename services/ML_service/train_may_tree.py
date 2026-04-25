@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Iterable, Tuple
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from era5_gam_weather.config import SamplingConfig, SplitConfig
 from era5_gam_weather.era5_sampler import discover_era5_files, sample_from_file, split_files_by_day
@@ -14,8 +15,8 @@ from era5_gam_weather.tree_model import WeatherTreeTrainer
 YEAR = 2025
 MONTHS = [4, 5]
 
-TRAIN_SAMPLES_PER_FILE = 30000
-EVAL_SAMPLES_PER_FILE = 8000
+TRAIN_SAMPLES_PER_FILE = 60000
+EVAL_SAMPLES_PER_FILE = 12000
 
 LAT_RANGE = None
 LON_RANGE = None
@@ -36,14 +37,40 @@ TARGET_CONFIG_GRID = {
         {"learning_rate": 0.035, "max_iter": 900, "max_leaf_nodes": 127, "min_samples_leaf": 64, "l2_regularization": 1e-3},
     ],
     "U": [
-        {"learning_rate": 0.04, "max_iter": 900, "max_leaf_nodes": 127, "min_samples_leaf": 32, "l2_regularization": 5e-4},
-        {"learning_rate": 0.03, "max_iter": 1200, "max_leaf_nodes": 191, "min_samples_leaf": 32, "l2_regularization": 5e-4},
-        {"learning_rate": 0.025, "max_iter": 1500, "max_leaf_nodes": 255, "min_samples_leaf": 24, "l2_regularization": 5e-4},
+    {
+        "learning_rate": 0.03,
+        "max_iter": 2200,
+        "max_leaf_nodes": 255,
+        "min_samples_leaf": 16,
+        "l2_regularization": 1e-4,
+        "n_iter_no_change": 80,
+    },
+    {
+        "learning_rate": 0.02,
+        "max_iter": 3200,
+        "max_leaf_nodes": 511,
+        "min_samples_leaf": 12,
+        "l2_regularization": 1e-4,
+        "n_iter_no_change": 100,
+    },
     ],
     "V": [
-        {"learning_rate": 0.04, "max_iter": 900, "max_leaf_nodes": 127, "min_samples_leaf": 32, "l2_regularization": 5e-4},
-        {"learning_rate": 0.03, "max_iter": 1200, "max_leaf_nodes": 191, "min_samples_leaf": 32, "l2_regularization": 5e-4},
-        {"learning_rate": 0.025, "max_iter": 1500, "max_leaf_nodes": 255, "min_samples_leaf": 24, "l2_regularization": 5e-4},
+        {
+            "learning_rate": 0.03,
+            "max_iter": 2200,
+            "max_leaf_nodes": 255,
+            "min_samples_leaf": 16,
+            "l2_regularization": 1e-4,
+            "n_iter_no_change": 80,
+        },
+        {
+            "learning_rate": 0.02,
+            "max_iter": 3200,
+            "max_leaf_nodes": 511,
+            "min_samples_leaf": 12,
+            "l2_regularization": 1e-4,
+            "n_iter_no_change": 100,
+        },
     ],
 }
 
@@ -73,6 +100,8 @@ ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
 MODEL_PATH = ARTIFACT_DIR / "weather_tree_bundle_2025_04_05.joblib"
 METRICS_PATH = ARTIFACT_DIR / "eval_metrics_tree_2025_04_05.json"
+PLOTS_DIR = ARTIFACT_DIR / "training_plots"
+PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _empty_feature_dict() -> Dict[str, list]:
@@ -140,16 +169,21 @@ def _concat_dicts(a: Dict[str, np.ndarray], b: Dict[str, np.ndarray]) -> Dict[st
     return {k: np.concatenate([a[k], b[k]]) for k in a}
 
 
-def _sample_weight(features: Dict[str, np.ndarray]) -> np.ndarray | None:
-    if WEIGHT_MODE == "uniform":
+def _sample_weight_for_target(features: Dict[str, np.ndarray], target_name: str) -> np.ndarray | None:
+    # Leave temperature and pressure untouched.
+    if target_name in ("T", "P"):
         return None
 
     alt_km = np.asarray(features["altitude_m"], dtype=np.float64) / 1000.0
     w = np.ones_like(alt_km)
-    w[alt_km <= 3.0] = 3.0
+
+    # Wind-specific weighting for ballistic relevance without punishing high altitude.
+    w[alt_km <= 3.0] = 2.4
     w[(alt_km > 3.0) & (alt_km <= 8.0)] = 2.0
-    w[(alt_km > 8.0) & (alt_km <= 16.0)] = 1.0
-    w[alt_km > 16.0] = 0.6
+    w[(alt_km > 8.0) & (alt_km <= 16.0)] = 1.5
+    w[(alt_km > 16.0) & (alt_km <= 26.0)] = 1.5
+    w[alt_km > 26.0] = 1.1
+
     return w
 
 
@@ -160,6 +194,146 @@ def _extract_single_target(targets: Dict[str, np.ndarray], name: str) -> Dict[st
 def _mae_for_target(bundle, features: Dict[str, np.ndarray], targets: Dict[str, np.ndarray], target: str) -> float:
     metrics = bundle.evaluate(features, targets)
     return float(metrics.mae[target])
+
+def _as_positive_loss_curve(values) -> np.ndarray:
+    arr = np.asarray(values, dtype=np.float64)
+    if arr.size == 0:
+        return arr
+
+    # In some sklearn settings scores may be stored as negative loss.
+    if np.nanmean(arr) < 0:
+        arr = -arr
+
+    # HistGradientBoosting stores an initial baseline point at index 0.
+    if arr.size > 1:
+        arr = arr[1:]
+
+    return arr
+
+
+def _save_training_curves(bundle) -> None:
+    """
+    Saves one graph per target showing how training loss and validation loss
+    changed across boosting iterations.
+    """
+    for target_name, model in bundle.models.items():
+        train_curve = _as_positive_loss_curve(getattr(model, "train_score_", []))
+        val_curve = _as_positive_loss_curve(getattr(model, "validation_score_", []))
+
+        if train_curve.size == 0:
+            continue
+
+        if val_curve.size > 0:
+            n = min(len(train_curve), len(val_curve))
+            train_curve = train_curve[:n]
+            val_curve = val_curve[:n]
+        else:
+            n = len(train_curve)
+
+        iterations = np.arange(1, n + 1)
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(iterations, train_curve, marker="o", markersize=3, linewidth=2, label="Training loss")
+
+        if val_curve.size > 0:
+            plt.plot(iterations, val_curve, marker="o", markersize=3, linewidth=2, label="Validation loss")
+
+        plt.xlabel("Boosting iteration")
+        plt.ylabel("Loss")
+        plt.title(f"{target_name} - Training and Validation Loss")
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(PLOTS_DIR / f"{target_name.lower()}_training_validation_loss.png", dpi=300)
+        plt.close()
+
+
+def _save_test_metric_plots(test_metrics) -> None:
+    """
+    Saves final bar charts for held-out test results.
+    """
+    targets = list(test_metrics.mae.keys())
+
+    mae_values = [float(test_metrics.mae[t]) for t in targets]
+    rmse_values = [float(test_metrics.rmse[t]) for t in targets]
+    max_abs_values = [float(test_metrics.max_abs[t]) for t in targets]
+
+    # Test MAE
+    plt.figure(figsize=(10, 6))
+    plt.bar(targets, mae_values)
+    plt.xlabel("Target")
+    plt.ylabel("MAE")
+    plt.title("Held-out Test MAE by Target")
+    for i, v in enumerate(mae_values):
+        plt.text(i, v + max(mae_values) * 0.02 if max(mae_values) > 0 else 0.01, f"{v:.3f}", ha="center")
+    plt.tight_layout()
+    plt.savefig(PLOTS_DIR / "test_mae_by_target.png", dpi=300)
+    plt.close()
+
+    # Test RMSE
+    plt.figure(figsize=(10, 6))
+    plt.bar(targets, rmse_values)
+    plt.xlabel("Target")
+    plt.ylabel("RMSE")
+    plt.title("Held-out Test RMSE by Target")
+    for i, v in enumerate(rmse_values):
+        plt.text(i, v + max(rmse_values) * 0.02 if max(rmse_values) > 0 else 0.01, f"{v:.3f}", ha="center")
+    plt.tight_layout()
+    plt.savefig(PLOTS_DIR / "test_rmse_by_target.png", dpi=300)
+    plt.close()
+
+    # Test max absolute error
+    plt.figure(figsize=(10, 6))
+    plt.bar(targets, max_abs_values)
+    plt.xlabel("Target")
+    plt.ylabel("Max Absolute Error")
+    plt.title("Held-out Test Max Absolute Error by Target")
+    for i, v in enumerate(max_abs_values):
+        plt.text(i, v + max(max_abs_values) * 0.02 if max(max_abs_values) > 0 else 0.01, f"{v:.3f}", ha="center")
+    plt.tight_layout()
+    plt.savefig(PLOTS_DIR / "test_max_abs_by_target.png", dpi=300)
+    plt.close()
+
+    with open(PLOTS_DIR / "plots_summary.txt", "w", encoding="utf-8") as f:
+        f.write("Generated plots:\n")
+        f.write("- One training/validation loss curve for each target: T, P, U, V\n")
+        f.write("- Held-out test MAE by target\n")
+        f.write("- Held-out test RMSE by target\n")
+        f.write("- Held-out test Max Absolute Error by target\n")
+
+def _print_training_summary(bundle, test_metrics) -> None:
+    print("\n" + "=" * 70)
+    print("FINAL TRAINING SUMMARY")
+    print("=" * 70)
+
+    print("\nPer-target training progress:")
+    for target_name, model in bundle.models.items():
+        train_curve = _as_positive_loss_curve(getattr(model, "train_score_", []))
+        val_curve = _as_positive_loss_curve(getattr(model, "validation_score_", []))
+
+        n_iter = getattr(model, "n_iter_", len(train_curve))
+        final_train_loss = float(train_curve[-1]) if train_curve.size > 0 else float("nan")
+        final_val_loss = float(val_curve[-1]) if val_curve.size > 0 else float("nan")
+
+        print(
+            f"{target_name}: "
+            f"iterations={n_iter}, "
+            f"final_train_loss={final_train_loss:.6f}, "
+            f"final_internal_val_loss={final_val_loss:.6f}"
+        )
+
+    print("\nHeld-out test metrics:")
+    for t in test_metrics.mae.keys():
+        print(
+            f"{t}: "
+            f"MAE={float(test_metrics.mae[t]):.6f} | "
+            f"RMSE={float(test_metrics.rmse[t]):.6f} | "
+            f"MAX_ABS={float(test_metrics.max_abs[t]):.6f}"
+        )
+
+    print("\nSaved plot files in:")
+    print(PLOTS_DIR)
+    print("=" * 70 + "\n")
 
 
 def run_training() -> None:
@@ -193,7 +367,6 @@ def run_training() -> None:
         raise RuntimeError("No training rows remained after filtering")
 
     feature_builder = TreeFeatureBuilder(TreeFeatureConfig())
-    train_weight = _sample_weight(train_features)
 
     best_configs: Dict[str, Dict] = {}
     tuning_scores: Dict[str, float] = {}
@@ -213,7 +386,8 @@ def run_training() -> None:
                 model_configs=cfg,
                 target_names=(target_name,),
             )
-            bundle = trainer.fit(train_features, target_train, sample_weight=train_weight)
+            target_weight = _sample_weight_for_target(train_features, target_name)
+            bundle = trainer.fit(train_features, target_train, sample_weight=target_weight)
             mae = _mae_for_target(bundle, val_features, target_val, target_name)
 
             print(f"[TUNE {target_name} #{idx}] val MAE = {mae:.6f} with {cfg[target_name]}")
@@ -230,7 +404,10 @@ def run_training() -> None:
 
     final_train_features = _concat_dicts(train_features, val_features)
     final_train_targets = _concat_dicts(train_targets, val_targets)
-    final_train_weight = _sample_weight(final_train_features)
+    final_train_weights = {
+        name: _sample_weight_for_target(final_train_features, name)
+        for name in TARGET_NAMES
+    }
 
     print(f"Training final tree bundle on {len(final_train_features['lat'])} rows...")
     final_trainer = WeatherTreeTrainer(
@@ -238,11 +415,18 @@ def run_training() -> None:
         model_configs=best_configs,
         target_names=TARGET_NAMES,
     )
-    bundle = final_trainer.fit(final_train_features, final_train_targets, sample_weight=final_train_weight)
+    bundle = final_trainer.fit(
+        final_train_features,
+        final_train_targets,
+        sample_weight=final_train_weights,
+    )
+    _save_training_curves(bundle)
     bundle.save(str(MODEL_PATH))
 
     print("Evaluating final model on held-out test split...")
     test_metrics = bundle.evaluate(test_features, test_targets)
+    _save_test_metric_plots(test_metrics)
+    _print_training_summary(bundle, test_metrics)
 
     payload = {
         "year": YEAR,

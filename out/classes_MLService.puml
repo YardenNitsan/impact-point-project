@@ -1,0 +1,68 @@
+@startuml classes_MLService
+set namespaceSeparator none
+class "TreeFeatureBuilder" as era5_gam_weather.tree_features.TreeFeatureBuilder {
+  config
+  feature_names : List[str]
+  __init__(config: TreeFeatureConfig | None)
+  _build_feature_names() -> List[str]
+  metadata() -> Dict
+  metadata_json() -> str
+  transform(features: Dict[str, np.ndarray]) -> np.ndarray
+}
+class "TreeFeatureConfig" as era5_gam_weather.tree_features.TreeFeatureConfig {
+  annual_harmonics : int
+  include_altitude_directional_terms : bool
+  include_altitude_polynomials : bool
+  include_xyz : bool
+  local_hour_harmonics : int
+  utc_hour_harmonics : int
+  __init__(self, annual_harmonics: int, utc_hour_harmonics: int, local_hour_harmonics: int, include_xyz: bool, include_altitude_polynomials: bool, include_altitude_directional_terms: bool) -> None
+  to_dict() -> Dict
+}
+class "WeatherPredictionService" as era5_gam_weather.prediction_service.WeatherPredictionService {
+  artifact_dir : Path
+  data_root : Path
+  default_model_loaded : bool
+  default_year : int
+  model_cache : Dict[str, WeatherTreeBundle]
+  model_candidates : list
+  project_root
+  this_dir
+  __init__(data_root: Optional[str], artifact_dir: Optional[str], default_year: int)
+  _date_from_year_and_day(year: int, day_of_year: float) -> datetime
+  _find_project_root(start: Path) -> Path
+  _load_model(path: Path) -> WeatherTreeBundle
+  _predict_model_batch(points: List[PredictRequest]) -> Tuple[List[Dict[str, float]], str]
+  batch_predict(points: List[PredictRequest]) -> List[PredictResponse]
+  choose_model(year: int, day_of_year: float) -> Tuple[WeatherTreeBundle, str]
+  health() -> ServiceInfo
+  predict(req: PredictRequest) -> PredictResponse
+  predict_exact(req: PredictRequest) -> Tuple[Dict[str, float], Dict]
+  predict_model(req: PredictRequest) -> Tuple[Dict[str, float], str, str]
+  warm_start() -> None
+}
+class "WeatherTreeBundle" as era5_gam_weather.tree_model.WeatherTreeBundle {
+  feature_builder
+  model_configs
+  models : Dict[str, HistGradientBoostingRegressor]
+  target_names : tuple
+  __init__(feature_builder: TreeFeatureBuilder, models: Dict[str, HistGradientBoostingRegressor], model_configs: Dict[str, Dict] | None, target_names: Iterable[str] | None)
+  describe() -> Dict
+  evaluate(features: Dict[str, np.ndarray], targets: Dict[str, np.ndarray]) -> EvalMetrics
+  load(path: str) -> 'WeatherTreeBundle'
+  predict(features: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]
+  predict_one(lat: float, lon: float, altitude_m: float, day_of_year: float, utc_hour: float) -> Dict[str, float]
+  save(path: str) -> None
+}
+class "WeatherTreeTrainer" as era5_gam_weather.tree_model.WeatherTreeTrainer {
+  feature_builder
+  model_configs : dict
+  target_names : tuple
+  __init__(feature_builder: TreeFeatureBuilder | None, model_configs: Dict[str, Dict] | None, target_names: Iterable[str] | None)
+  fit(features: Dict[str, np.ndarray], targets: Dict[str, np.ndarray], sample_weight: np.ndarray | Dict[str, np.ndarray | None] | None) -> 'WeatherTreeBundle'
+}
+era5_gam_weather.tree_model.WeatherTreeTrainer --> era5_gam_weather.tree_features.TreeFeatureBuilder : feature_builder
+era5_gam_weather.tree_features.TreeFeatureBuilder --> era5_gam_weather.tree_features.TreeFeatureConfig : config
+era5_gam_weather.prediction_service.WeatherPredictionService --> era5_gam_weather.tree_model.WeatherTreeBundle : model_cache
+era5_gam_weather.tree_features.TreeFeatureBuilder --o era5_gam_weather.tree_model.WeatherTreeBundle : feature_builder
+@enduml

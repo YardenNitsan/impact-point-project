@@ -1,10 +1,13 @@
 import { Request, Response } from "express";
-import { SimulationResult } from "../models/simulationResult.model";
 import { SimulationInput } from "../models/simulationInput.model";
+import { SimulationLocals } from "../../middlewares/require-simulation-access-token";
 
-export const getSimulationDetails = async (req: Request, res: Response) => {
+export const getSimulationDetails = async (
+  _req: Request,
+  res: Response<any, SimulationLocals>,
+) => {
   try {
-    const result = await SimulationResult.findById(req.params.id);
+    const result = res.locals.simulation;
 
     if (!result) {
       return res.status(404).json({
@@ -16,7 +19,9 @@ export const getSimulationDetails = async (req: Request, res: Response) => {
       });
     }
 
-    const input = await SimulationInput.findById(result.simulationInputId);
+    const input = await SimulationInput.findById(result.simulationInputId)
+      .select("initialData")
+      .lean();
 
     if (!input) {
       return res.status(404).json({

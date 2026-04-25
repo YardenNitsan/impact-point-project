@@ -1,0 +1,24 @@
+@startuml packages_MLService
+set namespaceSeparator none
+package "era5_gam_weather" as era5_gam_weather {
+}
+package "era5_gam_weather.config" as era5_gam_weather.config {
+}
+package "era5_gam_weather.era5_lookup" as era5_gam_weather.era5_lookup {
+}
+package "era5_gam_weather.era5_sampler" as era5_gam_weather.era5_sampler {
+}
+package "era5_gam_weather.prediction_service" as era5_gam_weather.prediction_service {
+}
+package "era5_gam_weather.tree_features" as era5_gam_weather.tree_features {
+}
+package "era5_gam_weather.tree_model" as era5_gam_weather.tree_model {
+}
+era5_gam_weather --> era5_gam_weather.config
+era5_gam_weather --> era5_gam_weather.tree_features
+era5_gam_weather --> era5_gam_weather.tree_model
+era5_gam_weather.era5_sampler --> era5_gam_weather.config
+era5_gam_weather.prediction_service --> era5_gam_weather.era5_lookup
+era5_gam_weather.prediction_service --> era5_gam_weather.tree_model
+era5_gam_weather.tree_model --> era5_gam_weather.tree_features
+@enduml

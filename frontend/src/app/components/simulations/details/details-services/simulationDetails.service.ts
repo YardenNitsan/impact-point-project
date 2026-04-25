@@ -37,7 +37,7 @@ export class SimulationDetailsService {
       return throwError(
         () =>
           new Error(
-            'No access token stored for this simulation. Create it again after the new security fix.',
+            'No access token stored for this simulation in this browser.',
           ),
       );
     }

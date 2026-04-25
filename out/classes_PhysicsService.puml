@@ -1,0 +1,44 @@
+@startuml classes_PhysicsService
+set namespaceSeparator none
+class "ImpactResult" as modules.impact.impact.ImpactResult {
+  index_after : int
+  index_before : int
+  interpolation_fraction : float
+  state_at_impact
+  __init__(self, state_at_impact: State3DOF, index_before: int, index_after: int, interpolation_fraction: float) -> None
+}
+class "SimulationOutput" as modules.impact.simulated_impact.SimulationOutput {
+  environment : Dict[str, float | str | int]
+  impact
+  physical_time : float
+  points_count : NotRequired[int]
+  raw_points_count : int
+  trajectory : NotRequired[List[TrajectoryPoint]]
+}
+class "State3DOF" as modules.state.state.State3DOF {
+  q : float
+  theta : float
+  vx : float
+  vz : float
+  x : float
+  z : float
+  __init__(self, x: float, z: float, vx: float, vz: float, theta: float, q: float) -> None
+  as_tuple() -> Tuple[float, float, float, float, float, float]
+}
+class "TrajectoryPoint" as modules.impact.simulated_impact.TrajectoryPoint {
+  alt : float
+  lat : float
+  lon : float
+  pressure_Pa : float
+  temperature_K : float
+  theta : float
+  vx : float
+  vz : float
+  wind_along_track_mps : float
+  wind_u_east_mps : float
+  wind_v_north_mps : float
+  wind_vertical_mps : float
+}
+modules.impact.simulated_impact.SimulationOutput --> modules.impact.simulated_impact.TrajectoryPoint : impact
+modules.impact.impact.ImpactResult --> modules.state.state.State3DOF : state_at_impact
+@enduml

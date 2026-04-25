@@ -4,10 +4,7 @@ import axios from "axios";
 import { SimulationInput } from "../models/simulationInput.model";
 import { SimulationResult } from "../models/simulationResult.model";
 import { environmentService } from "../../environment";
-import {
-  generateSimulationAccessToken,
-  SIMULATION_TOKEN_HEADER,
-} from "../../utils/simulation-access-token";
+import { generateSimulationAccessToken } from "../../utils/simulation-access-token";
 
 const PHYSICS_RESPONSE_LIMIT_BYTES = 5 * 1024 * 1024;
 const MAX_TRAJECTORY_POINTS = 30000;
@@ -105,11 +102,13 @@ export const createSimulation = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       success: true,
-      inputId: savedInput._id,
-      resultId: savedResult._id,
+      simulation: {
+        id: savedResult._id.toString(),
+        createdAt: savedResult.createdAt,
+        durationSeconds: savedResult.durationSeconds,
+        weather_source: savedResult.weather_source,
+      },
       accessToken,
-      accessTokenHeader: SIMULATION_TOKEN_HEADER,
-      algorithm: pythonResponse.data,
     });
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {

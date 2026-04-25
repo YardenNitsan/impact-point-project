@@ -36,7 +36,7 @@ class WeatherPredictionService:
 
         self.model_cache: Dict[str, WeatherTreeBundle] = {}
         self.model_candidates = [
-            self.artifact_dir / "weather_tree_bundle_2025_05.joblib",
+            self.artifact_dir / "weather_tree_bundle_2025_04_05.joblib",
         ]
         self.default_model_loaded = False
 

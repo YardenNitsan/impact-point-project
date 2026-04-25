@@ -1,13 +1,20 @@
 import { NextFunction, Request, Response } from "express";
-import { SimulationResult } from "../mongo-handler/models/simulationResult.model";
+import {
+  SimulationResult,
+  SimulationResultDocument,
+} from "../mongo-handler/models/simulationResult.model";
 import {
   SIMULATION_TOKEN_HEADER,
   simulationAccessTokenMatches,
 } from "../utils/simulation-access-token";
 
+export type SimulationLocals = {
+  simulation?: SimulationResultDocument;
+};
+
 export async function requireSimulationAccessToken(
   req: Request,
-  res: Response,
+  res: Response<any, SimulationLocals>,
   next: NextFunction,
 ) {
   try {
@@ -50,6 +57,7 @@ export async function requireSimulationAccessToken(
       });
     }
 
+    res.locals.simulation = simulation;
     return next();
   } catch (err) {
     return next(err);

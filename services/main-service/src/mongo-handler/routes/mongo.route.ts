@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { createSimulation } from "../controllers/simulationInput.controller";
-import { getSimulationResults } from "../controllers/simulationResult.controller";
 import { getSimulationToWatch } from "../controllers/simulationToWatch.controller";
 import { getSimulationDetails } from "../controllers/simulationDetails.controller";
 import { deleteSimulation } from "../controllers/simulationDelete.controller";
@@ -19,8 +18,6 @@ router.post(
   validateCreateSimulation,
   createSimulation,
 );
-
-router.get("/", getSimulationResults);
 
 router.get(
   "/:id/details",

@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
-import { SimulationResult } from "../models/simulationResult.model";
+import { SimulationLocals } from "../../middlewares/require-simulation-access-token";
 
-export const getSimulationToWatch = async (req: Request, res: Response) => {
+export const getSimulationToWatch = async (
+  _req: Request,
+  res: Response<any, SimulationLocals>,
+) => {
   try {
-    const sim = await SimulationResult.findById(req.params.id).select(
-      "coordinates",
-    );
+    const sim = res.locals.simulation;
 
     if (!sim) {
       return res.status(404).json({

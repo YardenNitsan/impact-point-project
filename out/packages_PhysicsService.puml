@@ -1,0 +1,34 @@
+@startuml packages_PhysicsService
+set namespaceSeparator none
+package "modules.aerodynamics.aero_tables" as modules.aerodynamics.aero_tables {
+}
+package "modules.aerodynamics.aerodynamics" as modules.aerodynamics.aerodynamics {
+}
+package "modules.dynamics.integrators" as modules.dynamics.integrators {
+}
+package "modules.impact.impact" as modules.impact.impact {
+}
+package "modules.impact.simulated_impact" as modules.impact.simulated_impact {
+}
+package "modules.solver.run_simulation" as modules.solver.run_simulation {
+}
+package "modules.solver.solver_3dof" as modules.solver.solver_3dof {
+}
+package "modules.solver.test_plot_raw" as modules.solver.test_plot_raw {
+}
+package "modules.state.state" as modules.state.state {
+}
+modules.dynamics.integrators --> modules.state.state
+modules.impact.impact --> modules.state.state
+modules.impact.simulated_impact --> modules.aerodynamics.aero_tables
+modules.impact.simulated_impact --> modules.aerodynamics.aerodynamics
+modules.impact.simulated_impact --> modules.solver.run_simulation
+modules.impact.simulated_impact --> modules.state.state
+modules.solver.run_simulation --> modules.dynamics.integrators
+modules.solver.run_simulation --> modules.solver.solver_3dof
+modules.solver.run_simulation --> modules.state.state
+modules.solver.solver_3dof --> modules.aerodynamics.aero_tables
+modules.solver.solver_3dof --> modules.aerodynamics.aerodynamics
+modules.solver.solver_3dof --> modules.state.state
+modules.solver.test_plot_raw --> modules.impact.simulated_impact
+@enduml

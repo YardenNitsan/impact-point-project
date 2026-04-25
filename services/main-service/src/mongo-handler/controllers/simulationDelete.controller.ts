@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
-
-import { SimulationResult } from "../models/simulationResult.model";
 import { SimulationInput } from "../models/simulationInput.model";
+import { SimulationLocals } from "../../middlewares/require-simulation-access-token";
 
-export const deleteSimulation = async (req: Request, res: Response) => {
+export const deleteSimulation = async (
+  _req: Request,
+  res: Response<any, SimulationLocals>,
+) => {
   try {
-    const result = await SimulationResult.findById(req.params.id);
+    const result = res.locals.simulation;
 
     if (!result) {
       return res.status(404).json({
@@ -17,7 +19,7 @@ export const deleteSimulation = async (req: Request, res: Response) => {
       });
     }
 
-    await SimulationResult.findByIdAndDelete(req.params.id);
+    await result.deleteOne();
 
     if (result.simulationInputId) {
       await SimulationInput.findByIdAndDelete(result.simulationInputId);
@@ -27,7 +29,7 @@ export const deleteSimulation = async (req: Request, res: Response) => {
       success: true,
       message: "Simulation deleted successfully",
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Delete error:", error);
 
     return res.status(500).json({

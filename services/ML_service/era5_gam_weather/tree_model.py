@@ -121,7 +121,7 @@ class WeatherTreeTrainer:
         self,
         features: Dict[str, np.ndarray],
         targets: Dict[str, np.ndarray],
-        sample_weight: np.ndarray | None = None,
+        sample_weight: np.ndarray | Dict[str, np.ndarray | None] | None = None,
     ) -> "WeatherTreeBundle":
         X = self.feature_builder.transform(features)
         models: Dict[str, HistGradientBoostingRegressor] = {}
@@ -133,7 +133,13 @@ class WeatherTreeTrainer:
             cfg = dict(self.model_configs.get(name, DEFAULT_MODEL_CONFIGS[name]))
             model = HistGradientBoostingRegressor(**cfg)
             y = _forward_transform(name, np.asarray(targets[name], dtype=np.float64))
-            model.fit(X, y, sample_weight=sample_weight)
+
+            if isinstance(sample_weight, dict):
+                target_weight = sample_weight.get(name)
+            else:
+                target_weight = sample_weight
+
+            model.fit(X, y, sample_weight=target_weight)
             models[name] = model
             fitted_configs[name] = cfg
 
@@ -142,7 +148,7 @@ class WeatherTreeTrainer:
             models=models,
             model_configs=fitted_configs,
             target_names=self.target_names,
-        )
+    )
 
 
 class WeatherTreeBundle:

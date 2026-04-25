@@ -1,0 +1,5 @@
+Generated plots:
+- One training/validation loss curve for each target: T, P, U, V
+- Held-out test MAE by target
+- Held-out test RMSE by target
+- Held-out test Max Absolute Error by target

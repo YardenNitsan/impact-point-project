@@ -1,0 +1,60 @@
+@startuml packages_AlgorithmService
+set namespaceSeparator none
+package "algorithm_service" as algorithm_service {
+}
+package "algorithm_service.main" as algorithm_service.main {
+}
+package "algorithm_service.modules" as algorithm_service.modules {
+}
+package "algorithm_service.modules.aerodynamics" as algorithm_service.modules.aerodynamics {
+}
+package "algorithm_service.modules.aerodynamics.aero_tables" as algorithm_service.modules.aerodynamics.aero_tables {
+}
+package "algorithm_service.modules.aerodynamics.aerodynamics" as algorithm_service.modules.aerodynamics.aerodynamics {
+}
+package "algorithm_service.modules.atmosphere" as algorithm_service.modules.atmosphere {
+}
+package "algorithm_service.modules.atmosphere.calculated_weather_runtime" as algorithm_service.modules.atmosphere.calculated_weather_runtime {
+}
+package "algorithm_service.modules.atmosphere.environment" as algorithm_service.modules.atmosphere.environment {
+}
+package "algorithm_service.modules.atmosphere.era5_loader" as algorithm_service.modules.atmosphere.era5_loader {
+}
+package "algorithm_service.modules.atmosphere.generate_dataset_fast" as algorithm_service.modules.atmosphere.generate_dataset_fast {
+}
+package "algorithm_service.modules.atmosphere.isa" as algorithm_service.modules.atmosphere.isa {
+}
+package "algorithm_service.modules.atmosphere.trajectory_delta" as algorithm_service.modules.atmosphere.trajectory_delta {
+}
+package "algorithm_service.modules.atmosphere.weather_client" as algorithm_service.modules.atmosphere.weather_client {
+}
+package "algorithm_service.modules.atmosphere.weather_runtime" as algorithm_service.modules.atmosphere.weather_runtime {
+}
+package "algorithm_service.modules.atmosphere.wind" as algorithm_service.modules.atmosphere.wind {
+}
+package "algorithm_service.modules.dynamics" as algorithm_service.modules.dynamics {
+}
+package "algorithm_service.modules.dynamics.dynamics_3dof" as algorithm_service.modules.dynamics.dynamics_3dof {
+}
+package "algorithm_service.modules.dynamics.integrators" as algorithm_service.modules.dynamics.integrators {
+}
+package "algorithm_service.modules.impact" as algorithm_service.modules.impact {
+}
+package "algorithm_service.modules.impact.impact" as algorithm_service.modules.impact.impact {
+}
+package "algorithm_service.modules.impact.simulated_impact" as algorithm_service.modules.impact.simulated_impact {
+}
+package "algorithm_service.modules.solver" as algorithm_service.modules.solver {
+}
+package "algorithm_service.modules.solver.run_simulation" as algorithm_service.modules.solver.run_simulation {
+}
+package "algorithm_service.modules.solver.solver_3dof" as algorithm_service.modules.solver.solver_3dof {
+}
+package "algorithm_service.modules.solver.test_plot_raw" as algorithm_service.modules.solver.test_plot_raw {
+}
+package "algorithm_service.modules.state" as algorithm_service.modules.state {
+}
+package "algorithm_service.modules.state.state" as algorithm_service.modules.state.state {
+}
+algorithm_service.main --> algorithm_service.modules.impact.simulated_impact
+@enduml

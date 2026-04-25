@@ -408,14 +408,7 @@ def _build_service_runtime(
     return runtime, requested_source
 
 
-def simulate_impact(
-    initial_conditions: SimulationInput,
-    environment_override=None,
-    return_trajectory: bool = False,
-    dx_sample_m: float = 5.0,
-) -> SimulationOutput:
-    del environment_override
-
+def _build_simulation_setup(initial_conditions: SimulationInput):
     initial_altitude_m = float(initial_conditions["alt"])
 
     azimuth_rad = math.radians(float(initial_conditions["azimuth"]))
@@ -424,18 +417,14 @@ def simulate_impact(
 
     launch_lat_deg = float(initial_conditions["lat"])
     launch_lon_deg = float(initial_conditions["lon"])
-
     mass_kg = float(initial_conditions["mass"])
     initial_speed_mps = float(initial_conditions["initialSpeed"])
-
-    vx0 = initial_speed_mps * math.cos(elevation_rad)
-    vz0 = initial_speed_mps * math.sin(elevation_rad)
 
     state0 = State3DOF(
         x=0.0,
         z=initial_altitude_m,
-        vx=vx0,
-        vz=vz0,
+        vx=initial_speed_mps * math.cos(elevation_rad),
+        vz=initial_speed_mps * math.sin(elevation_rad),
         theta=elevation_rad,
         q=0.0,
     )
@@ -447,35 +436,131 @@ def simulate_impact(
         else sim_time_raw
     )
 
+    return {
+        "initial_altitude_m": initial_altitude_m,
+        "azimuth_rad": azimuth_rad,
+        "launch_lat_deg": launch_lat_deg,
+        "launch_lon_deg": launch_lon_deg,
+        "mass_kg": mass_kg,
+        "state0": state0,
+        "sim_time": sim_time,
+        "sin_az": math.sin(azimuth_rad),
+        "cos_az": math.cos(azimuth_rad),
+    }
+
+
+def _build_weather_runtime_context(
+    initial_conditions: SimulationInput,
+    setup: dict,
+):
     requested_mode = str(initial_conditions.get("weather_source", "machine")).lower()
 
     if requested_mode == "calculations":
         weather_runtime, seed_environment, requested_source = _build_calculations_runtime(
             initial_conditions=initial_conditions,
-            launch_lat_deg=launch_lat_deg,
-            launch_lon_deg=launch_lon_deg,
-            initial_altitude_m=initial_altitude_m,
-            azimuth_rad=azimuth_rad,
-            sim_time=sim_time,
+            launch_lat_deg=setup["launch_lat_deg"],
+            launch_lon_deg=setup["launch_lon_deg"],
+            initial_altitude_m=setup["initial_altitude_m"],
+            azimuth_rad=setup["azimuth_rad"],
+            sim_time=setup["sim_time"],
         )
-        using_calculations = True
-    else:
-        weather_runtime, requested_source = _build_service_runtime(
-            initial_conditions=initial_conditions,
-            launch_lat_deg=launch_lat_deg,
-            launch_lon_deg=launch_lon_deg,
-            azimuth_rad=azimuth_rad,
-            sim_time=sim_time,
-        )
-        seed_environment = None
-        using_calculations = False
+        return weather_runtime, seed_environment, requested_source, True
+
+    weather_runtime, requested_source = _build_service_runtime(
+        initial_conditions=initial_conditions,
+        launch_lat_deg=setup["launch_lat_deg"],
+        launch_lon_deg=setup["launch_lon_deg"],
+        azimuth_rad=setup["azimuth_rad"],
+        sim_time=setup["sim_time"],
+    )
+    return weather_runtime, None, requested_source, False
+
+
+def _state_to_output_point(
+    state: State3DOF,
+    setup: dict,
+    sample_for_state,
+    force_ground_alt: bool = False,
+) -> TrajectoryPoint:
+    east_m = state.x * setup["sin_az"]
+    north_m = state.x * setup["cos_az"]
+    lat, lon = enu_displacement_to_latlon(
+        east_m,
+        north_m,
+        setup["launch_lat_deg"],
+        setup["launch_lon_deg"],
+    )
+
+    point_sample = sample_for_state(state)
+
+    return {
+        "lat": lat,
+        "lon": lon,
+        "alt": GROUND_ALTITUDE_M if force_ground_alt else state.z,
+        "vx": state.vx,
+        "vz": state.vz,
+        "theta": state.theta,
+        **build_point_environment(point_sample),
+    }
+
+
+def _build_environment_block(
+    impact_sample: WeatherSample,
+    runtime_summary: dict,
+    using_calculations: bool,
+    requested_source: str,
+    seed_environment,
+) -> Dict[str, float | str | int]:
+    if using_calculations:
+        assert seed_environment is not None
+        return {
+            "requested_source": requested_source,
+            "active_source": impact_sample.source,
+            "provider": impact_sample.provider,
+            "note": impact_sample.note,
+            "T0_K": float(seed_environment.sea_level_temperature_K),
+            "P0_Pa": float(seed_environment.sea_level_pressure_Pa),
+            "wind_x_mps": float(impact_sample.wind_x_mps),
+            "wind_z_mps": float(impact_sample.wind_z_mps),
+            "refresh_count": int(runtime_summary.get("refresh_count", 0)),
+            "fetch_count": int(runtime_summary.get("fetch_count", 0)),
+            "evaluate_count": int(runtime_summary.get("evaluate_count", 0)),
+        }
+
+    return {
+        "requested_source": requested_source,
+        "active_source": impact_sample.source,
+        "provider": impact_sample.provider,
+        "note": impact_sample.note,
+        "T0_K": impact_sample.temperature_K,
+        "P0_Pa": impact_sample.pressure_Pa,
+        "wind_x_mps": impact_sample.wind_x_mps,
+        "wind_z_mps": impact_sample.wind_z_mps,
+        "refresh_count": int(runtime_summary.get("refresh_count", 0)),
+        "fetch_count": int(runtime_summary.get("fetch_count", 0)),
+        "state_key": str(runtime_summary.get("state_key", "")),
+    }
+
+
+def simulate_impact(
+    initial_conditions: SimulationInput,
+    environment_override=None,
+    return_trajectory: bool = False,
+    dx_sample_m: float = 5.0,
+) -> SimulationOutput:
+    del environment_override
+
+    setup = _build_simulation_setup(initial_conditions)
+    weather_runtime, seed_environment, requested_source, using_calculations = (
+        _build_weather_runtime_context(initial_conditions, setup)
+    )
 
     sim_kwargs = dict(
-        state0=state0,
+        state0=setup["state0"],
         dt=DEFAULT_TIME_STEP_S,
         max_time=DEFAULT_MAX_SIM_TIME_S,
         weather_runtime=weather_runtime,
-        mass_kg=mass_kg,
+        mass_kg=setup["mass_kg"],
         pitch_inertia_kg_m2=DEFAULT_MOMENT_OF_INERTIA_KGM2,
         gravity_mps2=DEFAULT_GRAVITY_MPS2,
         aero_reference=AERO_REF,
@@ -483,74 +568,32 @@ def simulate_impact(
         center_of_gravity_offset_m=DEFAULT_CENTER_OF_GRAVITY_OFFSET,
     )
 
-    sin_az = math.sin(azimuth_rad)
-    cos_az = math.cos(azimuth_rad)
-
     def sample_for_state(state: State3DOF) -> WeatherSample:
         if using_calculations:
             return weather_runtime.sample_for_state(state)
         return weather_runtime.lookup_sample_for_x(state.x)
 
-    def build_environment_block(impact_sample: WeatherSample, runtime_summary: dict) -> Dict[str, float | str | int]:
-        if using_calculations:
-            assert seed_environment is not None
-            return {
-                "requested_source": requested_source,
-                "active_source": impact_sample.source,
-                "provider": impact_sample.provider,
-                "note": impact_sample.note,
-                "T0_K": float(seed_environment.sea_level_temperature_K),
-                "P0_Pa": float(seed_environment.sea_level_pressure_Pa),
-                "wind_x_mps": float(impact_sample.wind_x_mps),
-                "wind_z_mps": float(impact_sample.wind_z_mps),
-                "refresh_count": int(runtime_summary.get("refresh_count", 0)),
-                "fetch_count": int(runtime_summary.get("fetch_count", 0)),
-                "evaluate_count": int(runtime_summary.get("evaluate_count", 0)),
-            }
-
-        return {
-            "requested_source": requested_source,
-            "active_source": impact_sample.source,
-            "provider": impact_sample.provider,
-            "note": impact_sample.note,
-            "T0_K": impact_sample.temperature_K,
-            "P0_Pa": impact_sample.pressure_Pa,
-            "wind_x_mps": impact_sample.wind_x_mps,
-            "wind_z_mps": impact_sample.wind_z_mps,
-            "refresh_count": int(runtime_summary.get("refresh_count", 0)),
-            "fetch_count": int(runtime_summary.get("fetch_count", 0)),
-            "state_key": str(runtime_summary.get("state_key", "")),
-        }
-
     if not return_trajectory:
         impact_state, raw_points = run_simulation_impact_only(**sim_kwargs)
-
-        impact_east_m = impact_state.x * sin_az
-        impact_north_m = impact_state.x * cos_az
-        impact_lat, impact_lon = enu_displacement_to_latlon(
-            impact_east_m,
-            impact_north_m,
-            launch_lat_deg,
-            launch_lon_deg,
-        )
-
-        physical_time_s = DEFAULT_TIME_STEP_S * (raw_points - 1)
         impact_sample = sample_for_state(impact_state)
         runtime_summary = weather_runtime.summary()
 
         return {
-            "impact": {
-                "lat": impact_lat,
-                "lon": impact_lon,
-                "alt": GROUND_ALTITUDE_M,
-                "vx": impact_state.vx,
-                "vz": impact_state.vz,
-                "theta": impact_state.theta,
-                **build_point_environment(impact_sample),
-            },
-            "physical_time": physical_time_s,
+            "impact": _state_to_output_point(
+                impact_state,
+                setup,
+                sample_for_state,
+                force_ground_alt=True,
+            ),
+            "physical_time": DEFAULT_TIME_STEP_S * (raw_points - 1),
             "raw_points_count": raw_points,
-            "environment": build_environment_block(impact_sample, runtime_summary),
+            "environment": _build_environment_block(
+                impact_sample,
+                runtime_summary,
+                using_calculations,
+                requested_source,
+                seed_environment,
+            ),
         }
 
     impact_state, sampled_states, raw_points = run_simulation_sampled(
@@ -559,63 +602,36 @@ def simulate_impact(
     )
     sampled_states = _compress_trajectory_states(sampled_states)
 
-    trajectory_path: List[TrajectoryPoint] = []
-
-    for s in sampled_states:
-        east_m = s.x * sin_az
-        north_m = s.x * cos_az
-        lat, lon = enu_displacement_to_latlon(
-            east_m,
-            north_m,
-            launch_lat_deg,
-            launch_lon_deg,
-        )
-        point_sample = sample_for_state(s)
-        trajectory_path.append(
-            {
-                "lat": lat,
-                "lon": lon,
-                "alt": s.z,
-                "vx": s.vx,
-                "vz": s.vz,
-                "theta": s.theta,
-                **build_point_environment(point_sample),
-            }
-        )
-
-    impact_east_m = impact_state.x * sin_az
-    impact_north_m = impact_state.x * cos_az
-    impact_lat, impact_lon = enu_displacement_to_latlon(
-        impact_east_m,
-        impact_north_m,
-        launch_lat_deg,
-        launch_lon_deg,
-    )
+    trajectory_path = [
+        _state_to_output_point(s, setup, sample_for_state)
+        for s in sampled_states
+    ]
 
     impact_sample = sample_for_state(impact_state)
-    impact_point: TrajectoryPoint = {
-        "lat": impact_lat,
-        "lon": impact_lon,
-        "alt": GROUND_ALTITUDE_M,
-        "vx": impact_state.vx,
-        "vz": impact_state.vz,
-        "theta": impact_state.theta,
-        **build_point_environment(impact_sample),
-    }
+    runtime_summary = weather_runtime.summary()
+    impact_point = _state_to_output_point(
+        impact_state,
+        setup,
+        sample_for_state,
+        force_ground_alt=True,
+    )
 
     if trajectory_path:
         trajectory_path[-1] = impact_point
     else:
         trajectory_path.append(impact_point)
 
-    physical_time_s = DEFAULT_TIME_STEP_S * (raw_points - 1)
-    runtime_summary = weather_runtime.summary()
-
     return {
         "impact": impact_point,
         "trajectory": trajectory_path,
-        "physical_time": physical_time_s,
+        "physical_time": DEFAULT_TIME_STEP_S * (raw_points - 1),
         "points_count": len(trajectory_path),
         "raw_points_count": raw_points,
-        "environment": build_environment_block(impact_sample, runtime_summary),
+        "environment": _build_environment_block(
+            impact_sample,
+            runtime_summary,
+            using_calculations,
+            requested_source,
+            seed_environment,
+        ),
     }
