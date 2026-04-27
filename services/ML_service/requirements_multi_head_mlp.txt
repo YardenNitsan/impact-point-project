@@ -1,0 +1,8 @@
+tensorflow
+numpy
+xarray
+netCDF4
+matplotlib
+fastapi
+uvicorn
+pydantic

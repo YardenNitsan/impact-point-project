@@ -38,7 +38,7 @@ class PredictResponse(BaseModel):
 
     predicted: WeatherValues
     model_used: Optional[str] = None
-    prediction_source: Literal["model_tree", "era5_exact"]
+    prediction_source: Literal["model_tree", "model_numpy_mlp", "model_multi_head_mlp", "era5_exact"]
     real_era5: Optional[WeatherValues] = None
     prediction_minus_real: Optional[WeatherValues] = None
     comparison_meta: Optional[Dict[str, Any]] = None

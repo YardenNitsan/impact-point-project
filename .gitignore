@@ -88,5 +88,6 @@ frontend/src/app.zip
 # =========================
 services/ML_service/dataset.jsonl
 
-ML_service/artifacts/training_plots
-ML_service/artifacts/replotted_training_curves
+services/ML_service/artifacts/training_plots
+services/ML_service/artifacts/replotted_training_curves
+services/ML_service/.venv*

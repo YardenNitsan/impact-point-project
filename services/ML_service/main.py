@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from era5_gam_weather.prediction_service import WeatherPredictionService
 from schemas import BatchPredictRequest, PredictRequest, PredictResponse, ServiceInfo
 
-app = FastAPI(title="Weather ML Service", version="6.1.0")
+app = FastAPI(title="Weather ML Service", version="8.0.0")
 service = WeatherPredictionService()
 
 
@@ -20,7 +20,33 @@ def startup_event() -> None:
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"status": "Machine service is running"}
+    return {
+        "status": "Machine service is running",
+        "backend": service.backend,
+        "artifact_dir": str(service.artifact_dir),
+    }
+
+
+@app.get("/model-info")
+def model_info() -> dict:
+    """Return information about the currently active model backend."""
+    info: dict = {
+        "backend": service.backend,
+        "artifact_dir": str(service.artifact_dir),
+        "loaded_at_startup": service.default_model_loaded,
+    }
+
+    try:
+        if service.backend == "multi_head_mlp":
+            info["model"] = service._load_multi_head_mlp().describe()
+        elif service.backend == "numpy_mlp":
+            info["model"] = service._load_numpy_mlp().describe()
+        else:
+            info["legacy_note"] = "tree backend selected"
+    except FileNotFoundError as exc:
+        info["model_error"] = str(exc)
+
+    return info
 
 
 @app.get("/health", response_model=ServiceInfo)
@@ -63,7 +89,7 @@ class PhysicsWeatherRequest(BaseModel):
 def predict_weather_physics(req: PhysicsWeatherRequest):
     try:
         if req.sim_datetime:
-            dt = datetime.fromisoformat(req.sim_datetime)
+            dt = datetime.fromisoformat(req.sim_datetime.replace("Z", "+00:00"))
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             else:
