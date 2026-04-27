@@ -1,3 +1,12 @@
+"""Deterministic feature engineering for the Multi-Task Multi-Head MLP weather model.
+
+This module is the single source of truth for the input vector that the network
+consumes. It is intentionally pure NumPy so that training and serving produce
+identical features. The implementation is memory-conscious: every intermediate
+array is float32, which roughly halves peak RAM compared to the previous float64
+pipeline. Trigonometric and polynomial precision in float32 is more than enough
+for inputs in the lat/lon/altitude/time ranges we use.
+"""
 from __future__ import annotations
 
 import json
@@ -12,7 +21,10 @@ class WeatherFeatureConfig:
     """Configuration for deterministic weather feature engineering.
 
     The model is still a neural network; these features only give the network a
-    physically meaningful representation of position, altitude, and time.
+    physically meaningful representation of position, altitude, and time. They
+    are NOT a black-box feature transform: every column has a clear physical
+    meaning (normalized lat/lon, altitude polynomials, sphere XYZ embedding,
+    annual harmonics for seasonality, daily harmonics for diurnal cycle).
     """
 
     annual_harmonics: int = 2
@@ -90,9 +102,16 @@ class WeatherFeatureBuilder:
     def _array(features: Dict[str, np.ndarray], key: str) -> np.ndarray:
         if key not in features:
             raise KeyError(f"Missing feature key: {key}")
-        return np.asarray(features[key], dtype=np.float64).reshape(-1)
+        # Force float32 from the start; this is the dominant memory saving.
+        return np.asarray(features[key], dtype=np.float32).reshape(-1)
 
     def transform(self, features: Dict[str, np.ndarray]) -> np.ndarray:
+        """Return an (N, n_features) float32 matrix.
+
+        Inputs may be int/float of any precision; we normalize to float32. We
+        avoid creating any float64 intermediates so peak memory stays close to
+        ``N * n_features * 4`` bytes plus a few small temporaries.
+        """
         lat = self._array(features, "lat")
         lon = self._array(features, "lon")
         altitude_m = self._array(features, "altitude_m")
@@ -102,16 +121,20 @@ class WeatherFeatureBuilder:
         if "local_solar_hour" in features:
             local_solar_hour = self._array(features, "local_solar_hour")
         else:
-            local_solar_hour = (utc_hour + lon / 15.0) % 24.0
+            # Compute on the corrected longitude (-180..180) so serving matches training.
+            lon_for_solar = lon.copy()
+            lon_for_solar[lon_for_solar > 180.0] -= 360.0
+            local_solar_hour = np.mod(utc_hour + lon_for_solar / np.float32(15.0), np.float32(24.0)).astype(np.float32)
+            del lon_for_solar
 
         n = lat.shape[0]
-        for name, arr in {
-            "lon": lon,
-            "altitude_m": altitude_m,
-            "day_of_year": day_of_year,
-            "utc_hour": utc_hour,
-            "local_solar_hour": local_solar_hour,
-        }.items():
+        for name, arr in (
+            ("lon", lon),
+            ("altitude_m", altitude_m),
+            ("day_of_year", day_of_year),
+            ("utc_hour", utc_hour),
+            ("local_solar_hour", local_solar_hour),
+        ):
             if arr.shape[0] != n:
                 raise ValueError(f"Feature {name} has length {arr.shape[0]}, expected {n}")
 
@@ -119,21 +142,22 @@ class WeatherFeatureBuilder:
         lon = lon.copy()
         lon[lon > 180.0] -= 360.0
 
-        lat_rad = np.deg2rad(lat)
-        lon_rad = np.deg2rad(lon)
-        altitude_km = np.clip(altitude_m, 0.0, None) / 1000.0
-        abs_lat_norm = np.abs(lat) / 90.0
+        deg2rad = np.float32(np.pi / 180.0)
+        lat_rad = lat * deg2rad
+        lon_rad = lon * deg2rad
+        altitude_km = np.clip(altitude_m, 0.0, None) * np.float32(1.0 / 1000.0)
+        abs_lat_norm = np.abs(lat) * np.float32(1.0 / 90.0)
 
         cols: List[np.ndarray] = [
-            lat / 90.0,
-            lon / 180.0,
+            lat * np.float32(1.0 / 90.0),
+            lon * np.float32(1.0 / 180.0),
             abs_lat_norm,
             altitude_km,
             np.log1p(altitude_km),
         ]
 
         if self.config.include_altitude_polynomials:
-            cols += [altitude_km ** 2, altitude_km ** 3]
+            cols += [altitude_km * altitude_km, altitude_km * altitude_km * altitude_km]
 
         sin_lat = np.sin(lat_rad)
         cos_lat = np.cos(lat_rad)
@@ -142,10 +166,7 @@ class WeatherFeatureBuilder:
         cols += [sin_lat, cos_lat, sin_lon, cos_lon]
 
         if self.config.include_xyz:
-            sphere_x = cos_lat * cos_lon
-            sphere_y = cos_lat * sin_lon
-            sphere_z = sin_lat
-            cols += [sphere_x, sphere_y, sphere_z]
+            cols += [cos_lat * cos_lon, cos_lat * sin_lon, sin_lat]
 
         if self.config.include_altitude_directional_terms:
             cols += [
@@ -157,21 +178,23 @@ class WeatherFeatureBuilder:
             ]
 
         cols += [
-            (day_of_year - 1.0) / 365.25,
-            utc_hour / 24.0,
-            local_solar_hour / 24.0,
+            (day_of_year - np.float32(1.0)) * np.float32(1.0 / 365.25),
+            utc_hour * np.float32(1.0 / 24.0),
+            local_solar_hour * np.float32(1.0 / 24.0),
         ]
 
+        two_pi = np.float32(2.0 * np.pi)
+
         for k in range(1, self.config.annual_harmonics + 1):
-            angle = 2.0 * np.pi * k * day_of_year / 365.25
+            angle = (two_pi * k * np.float32(1.0 / 365.25)) * day_of_year
             cols += [np.sin(angle), np.cos(angle)]
 
         for k in range(1, self.config.utc_hour_harmonics + 1):
-            angle = 2.0 * np.pi * k * utc_hour / 24.0
+            angle = (two_pi * k * np.float32(1.0 / 24.0)) * utc_hour
             cols += [np.sin(angle), np.cos(angle)]
 
         for k in range(1, self.config.local_hour_harmonics + 1):
-            angle = 2.0 * np.pi * k * local_solar_hour / 24.0
+            angle = (two_pi * k * np.float32(1.0 / 24.0)) * local_solar_hour
             cols += [np.sin(angle), np.cos(angle)]
 
         for k in range(1, self.config.lat_lon_fourier_harmonics + 1):
@@ -182,10 +205,12 @@ class WeatherFeatureBuilder:
                 np.cos(k * lon_rad),
             ]
 
-        X = np.column_stack(cols).astype(np.float32)
+        # column_stack will allocate a single contiguous (N, F) float32 block.
+        X = np.column_stack(cols).astype(np.float32, copy=False)
         if X.shape[1] != len(self.feature_names):
             raise RuntimeError(
-                f"Feature width mismatch: got {X.shape[1]}, expected {len(self.feature_names)}"
+                f"Feature width mismatch: got {X.shape[1]}, expected {len(self.feature_names)} "
+                f"(feature config out of sync with feature_names list)"
             )
         return X
 

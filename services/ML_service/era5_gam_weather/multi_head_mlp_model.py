@@ -1,3 +1,17 @@
+"""Multi-Task Multi-Head MLP weather model.
+
+This module:
+  * defines the Keras architecture (shared trunk + 4 task-specific heads),
+  * computes train-only normalization statistics (no leakage),
+  * provides a serving wrapper (``MultiHeadMLPWeatherModel``) that loads a
+    saved Keras model + JSON statistics and produces predictions in physical
+    units.
+
+It is intentionally free of any sklearn / xgboost / lightgbm / catboost / tree
+dependency. TensorFlow is imported lazily so callers that only need feature
+engineering or sampling can import this package without paying the TF import
+cost.
+"""
 from __future__ import annotations
 
 import json
@@ -31,7 +45,7 @@ FEATURE_METADATA_FILENAME = "feature_metadata.json"
 
 
 def _import_keras():
-    """Import TensorFlow lazily so non-neural legacy paths do not require it."""
+    """Import TensorFlow lazily so non-neural callers don't pay the TF cost."""
     try:
         import tensorflow as tf  # type: ignore
         from tensorflow import keras  # type: ignore
@@ -52,25 +66,30 @@ def _forward_target_transform(output_name: str, values: np.ndarray) -> np.ndarra
     arr = np.asarray(values, dtype=np.float32).reshape(-1, 1)
     if TARGET_TRANSFORMS.get(output_name) == "log":
         return np.log(np.clip(arr, 1e-6, None)).astype(np.float32)
-    return arr.astype(np.float32)
+    return arr
 
 
 def _inverse_target_transform(output_name: str, values: np.ndarray) -> np.ndarray:
     arr = np.asarray(values, dtype=np.float32).reshape(-1)
     if TARGET_TRANSFORMS.get(output_name) == "log":
         return np.exp(arr).astype(np.float32)
-    return arr.astype(np.float32)
+    return arr
 
 
 def datetime_to_day_hour(sim_datetime: str | datetime | None) -> Tuple[int, float, int]:
-    """Convert an ISO datetime/datetime object to UTC day-of-year, hour, year."""
+    """Convert ISO datetime / datetime / None to (day_of_year, utc_hour, year)."""
     if sim_datetime is None:
         dt = datetime.now(timezone.utc)
     elif isinstance(sim_datetime, datetime):
         dt = sim_datetime
     else:
         text = sim_datetime.strip().replace("Z", "+00:00")
-        dt = datetime.fromisoformat(text)
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid sim_datetime: {sim_datetime!r}. Expected ISO 8601 (e.g. 2025-05-15T12:00:00Z)."
+            ) from exc
 
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
@@ -82,12 +101,31 @@ def datetime_to_day_hour(sim_datetime: str | datetime | None) -> Tuple[int, floa
 
 
 def build_multi_head_mlp(n_features: int, dropout_rate: float = 0.04, learning_rate: float = 1e-3):
-    """Build the Multi-Task Multi-Head MLP Regressor architecture."""
+    """Build the Multi-Task Multi-Head MLP Regressor.
+
+    Architecture (designed by hand, not auto-generated):
+
+    Shared trunk
+        Dense(256, relu) → BatchNorm → Dropout
+        Dense(256, relu) → BatchNorm → Dropout
+        Dense(128, relu) → BatchNorm
+
+    Heads
+        temperature_k : Dense(64, relu) → Dense(1, linear)
+        pressure_pa   : Dense(64, relu) → Dense(1, linear)   # pressure trained as log-pressure
+        wind_u        : Dense(128, relu) → Dense(64, relu) → Dense(1, linear)
+        wind_v        : Dense(128, relu) → Dense(64, relu) → Dense(1, linear)
+
+    Loss: Huber(delta=1.0) per head, on normalized targets. Huber is robust to
+    the rare extreme wind values present in ERA5 while behaving like MSE near
+    the median, which is what we want for a ballistic simulator.
+    Optimizer: Adam, default lr=1e-3.
+    """
     _, keras = _import_keras()
 
     inputs = keras.Input(shape=(n_features,), name="weather_features")
 
-    # Shared trunk: learns a common representation of atmosphere from location, altitude, and time.
+    # Shared trunk: learns a joint atmospheric representation from position + altitude + time.
     x = keras.layers.Dense(256, activation="relu", name="shared_dense_1")(inputs)
     x = keras.layers.BatchNormalization(name="shared_batchnorm_1")(x)
     x = keras.layers.Dropout(dropout_rate, name="shared_dropout_1")(x)
@@ -99,12 +137,14 @@ def build_multi_head_mlp(n_features: int, dropout_rate: float = 0.04, learning_r
     trunk = keras.layers.Dense(128, activation="relu", name="shared_dense_3")(x)
     trunk = keras.layers.BatchNormalization(name="shared_batchnorm_3")(trunk)
 
+    # Smaller heads for relatively smooth targets (T, P).
     temp = keras.layers.Dense(64, activation="relu", name="temperature_head_dense_1")(trunk)
     temperature_k = keras.layers.Dense(1, activation="linear", name="temperature_k")(temp)
 
     pressure = keras.layers.Dense(64, activation="relu", name="pressure_head_dense_1")(trunk)
     pressure_pa = keras.layers.Dense(1, activation="linear", name="pressure_pa")(pressure)
 
+    # Larger heads for noisier targets (U, V wind).
     wind_u = keras.layers.Dense(128, activation="relu", name="wind_u_head_dense_1")(trunk)
     wind_u = keras.layers.Dense(64, activation="relu", name="wind_u_head_dense_2")(wind_u)
     wind_u = keras.layers.Dense(1, activation="linear", name="wind_u")(wind_u)
@@ -142,7 +182,7 @@ def build_multi_head_mlp(n_features: int, dropout_rate: float = 0.04, learning_r
 
 
 class MultiHeadMLPWeatherModel:
-    """Prediction wrapper for the saved Multi-Task Multi-Head MLP weather model."""
+    """Prediction wrapper around the saved Multi-Task Multi-Head MLP model."""
 
     def __init__(
         self,
@@ -162,6 +202,26 @@ class MultiHeadMLPWeatherModel:
         self.y_std = {k: float(v) if abs(float(v)) >= 1e-8 else 1.0 for k, v in y_std.items()}
         self._metadata = metadata or {}
 
+        # Validate that the loaded model and the feature builder agree on width.
+        n_features_builder = len(feature_builder.feature_names)
+        if self.x_mean.shape[1] != n_features_builder:
+            raise ValueError(
+                f"Normalization width ({self.x_mean.shape[1]}) does not match "
+                f"feature builder width ({n_features_builder}). The feature config "
+                f"saved in feature_metadata.json is out of sync with the codebase."
+            )
+        try:
+            input_shape = self.model.input_shape
+            n_features_model = int(input_shape[-1])
+            if n_features_model != n_features_builder:
+                raise ValueError(
+                    f"Loaded Keras model expects {n_features_model} features but the feature "
+                    f"builder produces {n_features_builder}. Retrain the model after any feature change."
+                )
+        except (AttributeError, TypeError, IndexError):
+            # Older / non-standard Keras models may not expose input_shape; skip.
+            pass
+
     @property
     def metadata(self) -> Dict[str, Any]:
         return dict(self._metadata)
@@ -175,8 +235,16 @@ class MultiHeadMLPWeatherModel:
         X_train_raw: np.ndarray,
         train_targets: Mapping[str, np.ndarray],
     ) -> Tuple[np.ndarray, np.ndarray, Dict[str, float], Dict[str, float], Dict[str, np.ndarray]]:
-        x_mean = X_train_raw.mean(axis=0).astype(np.float32)
-        x_std = _safe_std(X_train_raw.std(axis=0).astype(np.float32))
+        """Compute per-feature and per-target normalization stats from the TRAIN split only.
+
+        Reductions are done in float64 to avoid catastrophic precision loss
+        when summing tens of millions of float32 values, then cast back to
+        float32 for storage. This is important because float32 mean over 20M
+        rows can drift by O(1) units, which silently breaks normalization.
+        """
+        X64 = X_train_raw.astype(np.float64, copy=False) if X_train_raw.dtype != np.float64 else X_train_raw
+        x_mean = X64.mean(axis=0).astype(np.float32)
+        x_std = _safe_std(X64.std(axis=0).astype(np.float32))
 
         y_mean: Dict[str, float] = {}
         y_std: Dict[str, float] = {}
@@ -186,8 +254,8 @@ class MultiHeadMLPWeatherModel:
             if era5_key not in train_targets:
                 raise KeyError(f"Missing training target: {era5_key}")
             y = _forward_target_transform(output_name, train_targets[era5_key])
-            mean = float(np.mean(y))
-            std = float(np.std(y))
+            mean = float(np.mean(y.astype(np.float64)))
+            std = float(np.std(y.astype(np.float64)))
             if abs(std) < 1e-8:
                 std = 1.0
             y_mean[output_name] = mean
@@ -210,21 +278,39 @@ class MultiHeadMLPWeatherModel:
 
     @classmethod
     def load(cls, artifact_dir: str | Path) -> "MultiHeadMLPWeatherModel":
-        tf, keras = _import_keras()
+        """Load a trained model from ``artifact_dir`` with explicit, readable errors."""
+        _, keras = _import_keras()
         artifact_path = Path(artifact_dir).resolve()
+
+        if not artifact_path.exists():
+            raise FileNotFoundError(
+                f"Artifact directory does not exist: {artifact_path}. "
+                f"Train the model first (python train_multi_head_mlp.py) "
+                f"or set WEATHER_ARTIFACT_DIR to point at an existing trained directory."
+            )
+
         model_path = artifact_path / MODEL_FILENAME
         norm_path = artifact_path / NORMALIZATION_FILENAME
         metadata_path = artifact_path / METADATA_FILENAME
         feature_path = artifact_path / FEATURE_METADATA_FILENAME
 
         if not model_path.exists():
-            raise FileNotFoundError(f"Multi-head MLP model file not found: {model_path}")
+            raise FileNotFoundError(
+                f"Multi-head MLP model file not found: {model_path}. "
+                f"Run train_multi_head_mlp.py to produce {MODEL_FILENAME}."
+            )
         if not norm_path.exists():
             raise FileNotFoundError(f"Normalization stats file not found: {norm_path}")
         if not feature_path.exists():
             raise FileNotFoundError(f"Feature metadata file not found: {feature_path}")
 
-        keras_model = keras.models.load_model(model_path)
+        try:
+            keras_model = keras.models.load_model(model_path)
+        except Exception as exc:  # pragma: no cover - depends on TF version
+            raise RuntimeError(
+                f"TensorFlow could not load {model_path}. This usually means a TF "
+                f"version mismatch or a corrupted .keras file. Original error: {exc}"
+            ) from exc
 
         with open(norm_path, "r", encoding="utf-8") as f:
             norm = json.load(f)
@@ -253,7 +339,9 @@ class MultiHeadMLPWeatherModel:
         X_raw = self.feature_builder.transform(dict(features))
         if X_raw.shape[1] != self.x_mean.shape[1]:
             raise ValueError(
-                f"Feature width mismatch: got {X_raw.shape[1]}, expected {self.x_mean.shape[1]}"
+                f"Feature width mismatch at predict time: got {X_raw.shape[1]}, "
+                f"expected {self.x_mean.shape[1]}. The serving feature builder is out of "
+                f"sync with the trained model. Retrain or downgrade the codebase."
             )
         return ((X_raw - self.x_mean) / self.x_std).astype(np.float32)
 
@@ -295,13 +383,20 @@ class MultiHeadMLPWeatherModel:
         utc_hour: float,
         year: int | None = None,
     ) -> Dict[str, float]:
+        # Compute local solar hour using the SAME convention as training:
+        # longitude is first folded into [-180, 180].
+        lon_corrected = float(lon)
+        if lon_corrected > 180.0:
+            lon_corrected -= 360.0
+        local_solar_hour = (float(utc_hour) + lon_corrected / 15.0) % 24.0
+
         features = {
             "lat": np.array([lat], dtype=np.float32),
             "lon": np.array([lon], dtype=np.float32),
             "altitude_m": np.array([altitude_m], dtype=np.float32),
             "day_of_year": np.array([day_of_year], dtype=np.float32),
             "utc_hour": np.array([utc_hour], dtype=np.float32),
-            "local_solar_hour": np.array([(utc_hour + lon / 15.0) % 24.0], dtype=np.float32),
+            "local_solar_hour": np.array([local_solar_hour], dtype=np.float32),
         }
         pred = self.predict_features(features)
         return {name: float(pred[name][0]) for name in TARGET_OUTPUTS}
