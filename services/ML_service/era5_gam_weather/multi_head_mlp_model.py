@@ -7,6 +7,12 @@ This module:
     saved Keras model + JSON statistics and produces predictions in physical
     units.
 
+The architecture is designed BY HAND. TensorFlow only provides:
+  * the layer math (Dense, BatchNorm, Dropout)
+  * the activations (ReLU, linear)
+  * the optimizer (Adam) and Huber loss
+  * autodiff (backprop) and ``model.fit``
+
 It is intentionally free of any sklearn / xgboost / lightgbm / catboost / tree
 dependency. TensorFlow is imported lazily so callers that only need feature
 engineering or sampling can import this package without paying the TF import
@@ -31,6 +37,11 @@ ERA5_TO_OUTPUT: Dict[str, str] = {
     "V": "wind_v",
 }
 OUTPUT_TO_ERA5: Dict[str, str] = {v: k for k, v in ERA5_TO_OUTPUT.items()}
+
+# Pressure is trained as log(P): atmospheric pressure decays exponentially with
+# altitude, so log(P) is much closer to a smooth function of the inputs we feed
+# the network. Predicting raw Pa would force the network to fit values spanning
+# 5,000 → 102,000 with a single linear head, which is unstable.
 TARGET_TRANSFORMS: Dict[str, str] = {
     "temperature_k": "identity",
     "pressure_pa": "log",
@@ -100,7 +111,13 @@ def datetime_to_day_hour(sim_datetime: str | datetime | None) -> Tuple[int, floa
     return int(dt.timetuple().tm_yday), float(utc_hour), int(dt.year)
 
 
-def build_multi_head_mlp(n_features: int, dropout_rate: float = 0.04, learning_rate: float = 1e-3):
+def build_multi_head_mlp(
+    n_features: int,
+    dropout_rate: float = 0.04,
+    learning_rate: float = 1e-3,
+    l2_weight_decay: float = 0.0,
+    loss_weights: Optional[Mapping[str, float]] = None,
+):
     """Build the Multi-Task Multi-Head MLP Regressor.
 
     Architecture (designed by hand, not auto-generated):
@@ -112,46 +129,71 @@ def build_multi_head_mlp(n_features: int, dropout_rate: float = 0.04, learning_r
 
     Heads
         temperature_k : Dense(64, relu) → Dense(1, linear)
-        pressure_pa   : Dense(64, relu) → Dense(1, linear)   # pressure trained as log-pressure
+        pressure_pa   : Dense(64, relu) → Dense(1, linear)   # trained as log(P)
         wind_u        : Dense(128, relu) → Dense(64, relu) → Dense(1, linear)
         wind_v        : Dense(128, relu) → Dense(64, relu) → Dense(1, linear)
 
-    Loss: Huber(delta=1.0) per head, on normalized targets. Huber is robust to
-    the rare extreme wind values present in ERA5 while behaving like MSE near
-    the median, which is what we want for a ballistic simulator.
-    Optimizer: Adam, default lr=1e-3.
+    Loss: Huber(delta=1.0) per head, on normalized targets. Optional per-target
+    loss_weights to bias the optimizer toward the harder targets (wind).
+    Optimizer: Adam (default lr=1e-3).
+    Optional L2 kernel regularizer on every Dense layer.
+
+    Parameters
+    ----------
+    n_features : int
+        Width of the engineered feature vector.
+    dropout_rate : float, default 0.04
+        Dropout applied after the first two trunk Dense layers.
+    learning_rate : float, default 1e-3
+        Adam learning rate.
+    l2_weight_decay : float, default 0.0
+        L2 kernel regularization. 0.0 means no regularizer is attached.
+    loss_weights : Mapping[str, float], optional
+        Per-target loss weights (matched to TARGET_OUTPUTS keys). If omitted,
+        all targets are weighted 1.0.
     """
     _, keras = _import_keras()
+
+    if l2_weight_decay > 0.0:
+        kernel_regularizer = keras.regularizers.l2(l2_weight_decay)
+    else:
+        kernel_regularizer = None
+
+    def dense(units: int, name: str, activation: str = "relu"):
+        return keras.layers.Dense(
+            units, activation=activation, name=name,
+            kernel_regularizer=kernel_regularizer,
+        )
 
     inputs = keras.Input(shape=(n_features,), name="weather_features")
 
     # Shared trunk: learns a joint atmospheric representation from position + altitude + time.
-    x = keras.layers.Dense(256, activation="relu", name="shared_dense_1")(inputs)
+    x = dense(256, "shared_dense_1")(inputs)
     x = keras.layers.BatchNormalization(name="shared_batchnorm_1")(x)
     x = keras.layers.Dropout(dropout_rate, name="shared_dropout_1")(x)
 
-    x = keras.layers.Dense(256, activation="relu", name="shared_dense_2")(x)
+    x = dense(256, "shared_dense_2")(x)
     x = keras.layers.BatchNormalization(name="shared_batchnorm_2")(x)
     x = keras.layers.Dropout(dropout_rate, name="shared_dropout_2")(x)
 
-    trunk = keras.layers.Dense(128, activation="relu", name="shared_dense_3")(x)
+    trunk = dense(128, "shared_dense_3")(x)
     trunk = keras.layers.BatchNormalization(name="shared_batchnorm_3")(trunk)
 
     # Smaller heads for relatively smooth targets (T, P).
-    temp = keras.layers.Dense(64, activation="relu", name="temperature_head_dense_1")(trunk)
-    temperature_k = keras.layers.Dense(1, activation="linear", name="temperature_k")(temp)
+    temp = dense(64, "temperature_head_dense_1")(trunk)
+    temperature_k = dense(1, "temperature_k", activation="linear")(temp)
 
-    pressure = keras.layers.Dense(64, activation="relu", name="pressure_head_dense_1")(trunk)
-    pressure_pa = keras.layers.Dense(1, activation="linear", name="pressure_pa")(pressure)
+    pressure = dense(64, "pressure_head_dense_1")(trunk)
+    pressure_pa = dense(1, "pressure_pa", activation="linear")(pressure)
 
     # Larger heads for noisier targets (U, V wind).
-    wind_u = keras.layers.Dense(128, activation="relu", name="wind_u_head_dense_1")(trunk)
-    wind_u = keras.layers.Dense(64, activation="relu", name="wind_u_head_dense_2")(wind_u)
-    wind_u = keras.layers.Dense(1, activation="linear", name="wind_u")(wind_u)
+    wind_u = dense(128, "wind_u_head_dense_1")(trunk)
+    wind_u = dense(64, "wind_u_head_dense_2")(wind_u)
+    wind_u = dense(1, "wind_u", activation="linear")(wind_u)
 
-    wind_v = keras.layers.Dense(128, activation="relu", name="wind_v_head_dense_1")(trunk)
-    wind_v = keras.layers.Dense(64, activation="relu", name="wind_v_head_dense_2")(wind_v)
-    wind_v = keras.layers.Dense(1, activation="linear", name="wind_v")(wind_v)
+    wind_v = dense(128, "wind_v_head_dense_1")(trunk)
+    wind_v = dense(64, "wind_v_head_dense_2")(wind_v)
+    wind_v = dense(1, "wind_v", activation="linear")(wind_v)
 
     model = keras.Model(
         inputs=inputs,
@@ -173,9 +215,15 @@ def build_multi_head_mlp(n_features: int, dropout_rate: float = 0.04, learning_r
         for name in TARGET_OUTPUTS
     }
 
+    if loss_weights is None:
+        weight_dict = {name: 1.0 for name in TARGET_OUTPUTS}
+    else:
+        weight_dict = {name: float(loss_weights.get(name, 1.0)) for name in TARGET_OUTPUTS}
+
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
         loss=losses,
+        loss_weights=weight_dict,
         metrics=metrics,
     )
     return model
@@ -219,7 +267,6 @@ class MultiHeadMLPWeatherModel:
                     f"builder produces {n_features_builder}. Retrain the model after any feature change."
                 )
         except (AttributeError, TypeError, IndexError):
-            # Older / non-standard Keras models may not expose input_shape; skip.
             pass
 
     @property
