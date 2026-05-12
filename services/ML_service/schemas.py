@@ -14,12 +14,21 @@ class WeatherValues(BaseModel):
     wind_v: float
 
 
+# Inclusive altitude range the multi-head MLP was trained on. Requests
+# outside this band would force the network to extrapolate well past where
+# any ERA5 sample exists, so we reject at the edge of the API rather than
+# silently produce garbage predictions. Keep this in sync with
+# SamplingConfig.altitude_clip_m in era5_gam_weather/config.py.
+ALTITUDE_TRAIN_MIN_M = 0.0
+ALTITUDE_TRAIN_MAX_M = 32000.0
+
+
 class PredictRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     lat: float = Field(..., ge=-90.0, le=90.0)
     lon: float = Field(..., ge=-180.0, le=180.0)
-    altitude_m: float = Field(..., ge=-1000.0, le=50000.0)
+    altitude_m: float = Field(..., ge=ALTITUDE_TRAIN_MIN_M, le=ALTITUDE_TRAIN_MAX_M)
     day_of_year: float = Field(..., ge=1.0, le=366.0)
     utc_hour: float = Field(..., ge=0.0, le=24.0)
     year: int = Field(2025, ge=1900, le=2100)

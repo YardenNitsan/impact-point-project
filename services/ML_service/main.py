@@ -7,7 +7,14 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from era5_gam_weather.prediction_service import WeatherPredictionService
-from schemas import BatchPredictRequest, PredictRequest, PredictResponse, ServiceInfo
+from schemas import (
+    ALTITUDE_TRAIN_MAX_M,
+    ALTITUDE_TRAIN_MIN_M,
+    BatchPredictRequest,
+    PredictRequest,
+    PredictResponse,
+    ServiceInfo,
+)
 
 app = FastAPI(title="Weather ML Service", version="8.0.0")
 service = WeatherPredictionService()
@@ -81,7 +88,7 @@ def predict_weather_batch(req: BatchPredictRequest) -> list[PredictResponse]:
 class PhysicsWeatherRequest(BaseModel):
     lat: float = Field(..., ge=-90.0, le=90.0)
     lon: float = Field(..., ge=-180.0, le=180.0)
-    alt: float
+    alt: float = Field(..., ge=ALTITUDE_TRAIN_MIN_M, le=ALTITUDE_TRAIN_MAX_M)
     sim_datetime: Optional[str] = None
 
 

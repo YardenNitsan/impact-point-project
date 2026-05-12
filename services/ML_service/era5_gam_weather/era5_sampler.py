@@ -90,6 +90,68 @@ def _make_rng(path: str, seed: int) -> np.random.Generator:
     return np.random.default_rng(file_seed)
 
 
+def _lat_sampling_probs(lats_deg: np.ndarray) -> np.ndarray:
+    """Return a length-n_lat probability vector ∝ cos(lat) (area-weighted).
+
+    ERA5 grids are uniform in lat/lon degrees, so polar cells cover much
+    smaller physical area than equatorial cells. Without this weighting the
+    sampler over-represents tiny polar cells and biases wind statistics.
+    """
+    lats = np.asarray(lats_deg, dtype=np.float64)
+    weights = np.clip(np.cos(np.deg2rad(lats)), 1e-6, None)
+    return (weights / weights.sum()).astype(np.float64)
+
+
+def _draw_lat_indices(rng: np.random.Generator, n_lat: int, count: int, lat_probs: np.ndarray | None) -> np.ndarray:
+    if count <= 0:
+        return np.empty(0, dtype=np.int32)
+    if lat_probs is None:
+        return rng.integers(0, n_lat, size=count, dtype=np.int32)
+    return rng.choice(n_lat, size=count, replace=True, p=lat_probs).astype(np.int32, copy=False)
+
+
+def _level_budget(
+    sample_count: int,
+    n_time: int,
+    n_level: int,
+    level_weights: np.ndarray | None,
+) -> np.ndarray:
+    """Compute integer sample budget per (time, level) slice.
+
+    Returns a length-(n_time*n_level) integer array summing to sample_count.
+    When ``level_weights`` is None, slices are uniformly weighted (preserving
+    the previous behavior). Otherwise the level dimension is weighted by
+    ``level_weights`` and time is uniform.
+    """
+    n_slices = n_time * n_level
+    if level_weights is None:
+        base = sample_count // n_slices
+        rem = sample_count % n_slices
+        budget = np.full(n_slices, base, dtype=np.int64)
+        # Distribute the remainder across slices uniformly (deterministic).
+        budget[:rem] += 1
+        return budget
+
+    if level_weights.shape[0] != n_level:
+        raise ValueError(
+            f"level_weights length {level_weights.shape[0]} does not match n_level={n_level}"
+        )
+    weights = np.clip(level_weights, 0.0, None).astype(np.float64)
+    if not np.any(weights > 0):
+        raise ValueError("level_weights must contain at least one positive value")
+    weights = weights / weights.sum()
+    # Per-(time, level) target = sample_count * (1/n_time) * level_weight.
+    per_slice = (sample_count / n_time) * np.tile(weights, n_time)
+    floor = np.floor(per_slice).astype(np.int64)
+    rem = int(sample_count - floor.sum())
+    if rem > 0:
+        # Hand out the remaining samples to slices with the largest fractional part.
+        frac = per_slice - floor
+        order = np.argsort(-frac, kind="stable")
+        floor[order[:rem]] += 1
+    return floor
+
+
 def _build_indices(
     n_time: int,
     n_level: int,
@@ -98,6 +160,8 @@ def _build_indices(
     sample_count: int,
     rng: np.random.Generator,
     stratified: bool,
+    lat_probs: np.ndarray | None = None,
+    level_weights: np.ndarray | None = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Return four (sample_count,) int32 index arrays for (time, level, lat, lon).
 
@@ -109,24 +173,22 @@ def _build_indices(
         return (
             rng.integers(0, n_time, size=sample_count, dtype=np.int32),
             rng.integers(0, n_level, size=sample_count, dtype=np.int32),
-            rng.integers(0, n_lat, size=sample_count, dtype=np.int32),
+            _draw_lat_indices(rng, n_lat, sample_count, lat_probs),
             rng.integers(0, n_lon, size=sample_count, dtype=np.int32),
         )
 
     n_slices = n_time * n_level
-    base = sample_count // n_slices
-    rem = sample_count % n_slices
-
     flat_order = np.arange(n_slices, dtype=np.int64)
     rng.shuffle(flat_order)
+    budget_by_slice = _level_budget(sample_count, n_time, n_level, level_weights)
 
     time_parts = []
     level_parts = []
     lat_parts = []
     lon_parts = []
 
-    for rank, flat_id in enumerate(flat_order):
-        count = base + (1 if rank < rem else 0)
+    for flat_id in flat_order:
+        count = int(budget_by_slice[flat_id])
         if count <= 0:
             continue
         ti = int(flat_id) // n_level
@@ -134,13 +196,13 @@ def _build_indices(
 
         time_parts.append(np.full(count, ti, dtype=np.int32))
         level_parts.append(np.full(count, li, dtype=np.int32))
-        lat_parts.append(rng.integers(0, n_lat, size=count, dtype=np.int32))
+        lat_parts.append(_draw_lat_indices(rng, n_lat, count, lat_probs))
         lon_parts.append(rng.integers(0, n_lon, size=count, dtype=np.int32))
 
-    time_idx = np.concatenate(time_parts)
-    level_idx = np.concatenate(level_parts)
-    lat_idx = np.concatenate(lat_parts)
-    lon_idx = np.concatenate(lon_parts)
+    time_idx = np.concatenate(time_parts) if time_parts else np.empty(0, dtype=np.int32)
+    level_idx = np.concatenate(level_parts) if level_parts else np.empty(0, dtype=np.int32)
+    lat_idx = np.concatenate(lat_parts) if lat_parts else np.empty(0, dtype=np.int32)
+    lon_idx = np.concatenate(lon_parts) if lon_parts else np.empty(0, dtype=np.int32)
 
     perm = rng.permutation(time_idx.shape[0])
     return time_idx[perm], level_idx[perm], lat_idx[perm], lon_idx[perm]
@@ -176,6 +238,17 @@ def sample_from_file(path: str, config: SamplingConfig) -> SampleBatch:
         n_lon = lons.shape[0]
 
         sample_count = int(config.samples_per_file)
+        lat_probs = (
+            _lat_sampling_probs(lats)
+            if bool(getattr(config, "area_weighted_lat", False))
+            else None
+        )
+        level_weights_cfg = getattr(config, "level_weights", None)
+        level_weights_arr = (
+            np.asarray(level_weights_cfg, dtype=np.float64)
+            if level_weights_cfg is not None
+            else None
+        )
         time_idx, level_idx, lat_idx, lon_idx = _build_indices(
             n_time=n_time,
             n_level=n_level,
@@ -184,9 +257,20 @@ def sample_from_file(path: str, config: SamplingConfig) -> SampleBatch:
             sample_count=sample_count,
             rng=rng,
             stratified=bool(getattr(config, "stratified_time_level", False)),
+            lat_probs=lat_probs,
+            level_weights=level_weights_arr,
         )
 
-        # Group by (time, level) so we read each slice exactly once.
+        # Load all 4 variables fully into memory upfront: 4 sequential reads
+        # instead of O(n_time * n_levels * n_vars) per-slice isel() disk reads.
+        # Transposing to (time, level, lat, lon) is safe regardless of the
+        # original dimension order in the file.
+        T_full = np.asarray(ds[t_name].transpose(time_name, level_name, lat_name, lon_name).values, dtype=np.float32)
+        U_full = np.asarray(ds[u_name].transpose(time_name, level_name, lat_name, lon_name).values, dtype=np.float32)
+        V_full = np.asarray(ds[v_name].transpose(time_name, level_name, lat_name, lon_name).values, dtype=np.float32)
+        Z_full = np.asarray(ds[z_name].transpose(time_name, level_name, lat_name, lon_name).values, dtype=np.float32)
+
+        # Group by (time, level) so each combination is processed once.
         flat_slice = time_idx.astype(np.int64) * n_level + level_idx.astype(np.int64)
         order = np.argsort(flat_slice, kind="mergesort")
         flat_sorted = flat_slice[order]
@@ -218,17 +302,10 @@ def sample_from_file(path: str, config: SamplingConfig) -> SampleBatch:
             lat_g = lat_idx[group_order]
             lon_g = lon_idx[group_order]
 
-            # Read a single (time, level) horizontal slice as float32.
-            t_slice = np.asarray(ds[t_name].isel({time_name: ti, level_name: li}).values, dtype=np.float32)
-            u_slice = np.asarray(ds[u_name].isel({time_name: ti, level_name: li}).values, dtype=np.float32)
-            v_slice = np.asarray(ds[v_name].isel({time_name: ti, level_name: li}).values, dtype=np.float32)
-            z_slice = np.asarray(ds[z_name].isel({time_name: ti, level_name: li}).values, dtype=np.float32)
-
-            T_vals = t_slice[lat_g, lon_g]
-            U_vals = u_slice[lat_g, lon_g]
-            V_vals = v_slice[lat_g, lon_g]
-            Z_vals = z_slice[lat_g, lon_g]
-            del t_slice, u_slice, v_slice, z_slice
+            T_vals = T_full[ti, li, lat_g, lon_g]
+            U_vals = U_full[ti, li, lat_g, lon_g]
+            V_vals = V_full[ti, li, lat_g, lon_g]
+            Z_vals = Z_full[ti, li, lat_g, lon_g]
 
             altitude_vals = np.clip(Z_vals * np.float32(1.0 / G0), clip_lo, clip_hi)
             day_of_year, utc_hour = _extract_time_parts(times[ti])
@@ -256,6 +333,8 @@ def sample_from_file(path: str, config: SamplingConfig) -> SampleBatch:
             P_out[group_order] = np.float32(levels_hpa[li] * 100.0)
             U_out[group_order] = U_vals
             V_out[group_order] = V_vals
+
+        del T_full, U_full, V_full, Z_full
     finally:
         ds.close()
 

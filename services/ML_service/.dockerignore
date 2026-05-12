@@ -7,6 +7,7 @@ __pycache__/
 .venv/
 venv/
 .env
+.venv-tf/
 
 .git
 .gitignore
@@ -16,3 +17,5 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ipynb_checkpoints/
+
+.logs

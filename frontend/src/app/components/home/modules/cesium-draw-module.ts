@@ -463,7 +463,7 @@ export async function drawTrajectoryLOD(
   if (!handles.movingEntity) {
     handles.movingEntity = viewer.entities.add({
       position: handles.movingProperty,
-      viewFrom: TRACKED_VIEW_FROM_PROPERTY,
+      // viewFrom: TRACKED_VIEW_FROM_PROPERTY,
       point: {
         pixelSize: MOVING_POINT_PIXEL_SIZE,
         color: Color.RED,
@@ -474,7 +474,8 @@ export async function drawTrajectoryLOD(
     });
   } else {
     handles.movingEntity.position = handles.movingProperty;
-    handles.movingEntity.viewFrom = TRACKED_VIEW_FROM_PROPERTY;
+    // handles.movingEntity.viewFrom = TRACKED_VIEW_FROM_PROPERTY;
+    handles.movingEntity.viewFrom = undefined;
     handles.movingEntity.label = movingLabel;
   }
 

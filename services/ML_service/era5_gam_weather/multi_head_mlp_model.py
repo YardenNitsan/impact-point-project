@@ -111,46 +111,96 @@ def datetime_to_day_hour(sim_datetime: str | datetime | None) -> Tuple[int, floa
     return int(dt.timetuple().tm_yday), float(utc_hour), int(dt.year)
 
 
+DEFAULT_LOSS_WEIGHTS: Dict[str, float] = {
+    "temperature_k": 0.5,
+    "pressure_pa": 0.5,
+    "wind_u": 1.5,
+    "wind_v": 1.5,
+}
+
+
+def _residual_block(x, units: int, dropout_rate: float, regularizer, idx: int, keras):
+    """Pre-activation residual block: BN → ReLU → Dense → BN → ReLU → (Dropout) → Dense → Add.
+
+    The skip connection lets later layers reuse the heavily Fourier-encoded
+    inputs without re-learning them, which matters because our feature builder
+    emits sin/cos pairs at multiple harmonics.
+    """
+    residual = x
+    y = keras.layers.BatchNormalization(name=f"resblock_{idx}_bn1")(x)
+    y = keras.layers.Activation("relu", name=f"resblock_{idx}_relu1")(y)
+    y = keras.layers.Dense(units, name=f"resblock_{idx}_dense1", kernel_regularizer=regularizer)(y)
+    y = keras.layers.BatchNormalization(name=f"resblock_{idx}_bn2")(y)
+    y = keras.layers.Activation("relu", name=f"resblock_{idx}_relu2")(y)
+    if dropout_rate > 0.0:
+        y = keras.layers.Dropout(dropout_rate, name=f"resblock_{idx}_dropout")(y)
+    y = keras.layers.Dense(units, name=f"resblock_{idx}_dense2", kernel_regularizer=regularizer)(y)
+    return keras.layers.Add(name=f"resblock_{idx}_add")([residual, y])
+
+
 def build_multi_head_mlp(
     n_features: int,
-    dropout_rate: float = 0.04,
-    learning_rate: float = 1e-3,
+    dropout_rate: float = 0.0,
+    learning_rate: Any = 2e-3,
     l2_weight_decay: float = 0.0,
     loss_weights: Optional[Mapping[str, float]] = None,
+    n_residual_blocks: int = 4,
+    block_width: int = 512,
+    head_hidden_width: int = 128,
+    huber_delta: float = 0.5,
+    weight_decay: float = 1e-5,
+    use_adamw: bool = True,
 ):
-    """Build the Multi-Task Multi-Head MLP Regressor.
+    """Build the Multi-Task Multi-Head MLP Regressor with a residual trunk.
 
-    Architecture (designed by hand, not auto-generated):
-
-    Shared trunk
-        Dense(256, relu) → BatchNorm → Dropout
-        Dense(256, relu) → BatchNorm → Dropout
-        Dense(128, relu) → BatchNorm
-
+    Architecture
+    ------------
+    Stem
+        Dense(block_width, linear)
+    Trunk
+        n_residual_blocks × pre-activation ResNet blocks of width block_width
+        BN → ReLU (final pre-activation)
     Heads
-        temperature_k : Dense(64, relu) → Dense(1, linear)
-        pressure_pa   : Dense(64, relu) → Dense(1, linear)   # trained as log(P)
-        wind_u        : Dense(128, relu) → Dense(64, relu) → Dense(1, linear)
-        wind_v        : Dense(128, relu) → Dense(64, relu) → Dense(1, linear)
+        temperature_k : Dense(head_hidden_width, relu) → Dense(1, linear)
+        pressure_pa   : Dense(head_hidden_width, relu) → Dense(1, linear)   # trained as log(P)
+        wind_u        : Dense(2*head_hidden_width, relu) → Dense(head_hidden_width, relu) → Dense(1, linear)
+        wind_v        : Dense(2*head_hidden_width, relu) → Dense(head_hidden_width, relu) → Dense(1, linear)
 
-    Loss: Huber(delta=1.0) per head, on normalized targets. Optional per-target
-    loss_weights to bias the optimizer toward the harder targets (wind).
-    Optimizer: Adam (default lr=1e-3).
-    Optional L2 kernel regularizer on every Dense layer.
+    Loss: Huber(delta=huber_delta) per head, on normalized targets. Per-target
+    loss_weights bias the optimizer toward the harder targets (wind). Default
+    weights are {T:0.5, P:0.5, U:1.5, V:1.5}.
+
+    Optimizer: AdamW (default) with decoupled weight_decay, or plain Adam if
+    use_adamw=False. ``learning_rate`` may be a float or a Keras LR schedule.
 
     Parameters
     ----------
     n_features : int
         Width of the engineered feature vector.
-    dropout_rate : float, default 0.04
-        Dropout applied after the first two trunk Dense layers.
-    learning_rate : float, default 1e-3
-        Adam learning rate.
+    dropout_rate : float, default 0.0
+        Dropout inside each residual block. Default off — the network is now
+        regularized via AdamW weight decay, BatchNorm, and (optionally) L2.
+    learning_rate : float or LearningRateSchedule, default 2e-3
+        Optimizer learning rate. Pass a Keras schedule for cosine/warmup.
     l2_weight_decay : float, default 0.0
-        L2 kernel regularization. 0.0 means no regularizer is attached.
+        L2 kernel regularization on every Dense in the trunk and heads. Usually
+        leave at 0 when use_adamw=True (decoupled WD already regularizes).
     loss_weights : Mapping[str, float], optional
-        Per-target loss weights (matched to TARGET_OUTPUTS keys). If omitted,
-        all targets are weighted 1.0.
+        Per-target loss weights. If omitted, DEFAULT_LOSS_WEIGHTS is used.
+    n_residual_blocks : int, default 4
+        Depth of the residual trunk.
+    block_width : int, default 512
+        Width of every Dense in the residual trunk.
+    head_hidden_width : int, default 128
+        Width of the first hidden layer in each head.
+    huber_delta : float, default 0.5
+        Huber loss delta on normalized targets. Smaller values penalize the
+        long tail less aggressively, which helps wind heads.
+    weight_decay : float, default 1e-5
+        AdamW decoupled weight decay. Ignored when use_adamw=False.
+    use_adamw : bool, default True
+        If True, use AdamW; falls back to Adam if AdamW is not present in the
+        installed Keras version.
     """
     _, keras = _import_keras()
 
@@ -167,32 +217,32 @@ def build_multi_head_mlp(
 
     inputs = keras.Input(shape=(n_features,), name="weather_features")
 
-    # Shared trunk: learns a joint atmospheric representation from position + altitude + time.
-    x = dense(256, "shared_dense_1")(inputs)
-    x = keras.layers.BatchNormalization(name="shared_batchnorm_1")(x)
-    x = keras.layers.Dropout(dropout_rate, name="shared_dropout_1")(x)
+    # Stem projection: bring features into block_width before residual blocks.
+    x = keras.layers.Dense(
+        block_width, name="stem_dense", kernel_regularizer=kernel_regularizer,
+    )(inputs)
 
-    x = dense(256, "shared_dense_2")(x)
-    x = keras.layers.BatchNormalization(name="shared_batchnorm_2")(x)
-    x = keras.layers.Dropout(dropout_rate, name="shared_dropout_2")(x)
+    for i in range(n_residual_blocks):
+        x = _residual_block(x, block_width, dropout_rate, kernel_regularizer, i + 1, keras)
 
-    trunk = dense(128, "shared_dense_3")(x)
-    trunk = keras.layers.BatchNormalization(name="shared_batchnorm_3")(trunk)
+    # Final pre-activation so heads see a clean ReLU output.
+    trunk = keras.layers.BatchNormalization(name="trunk_final_bn")(x)
+    trunk = keras.layers.Activation("relu", name="trunk_final_relu")(trunk)
 
     # Smaller heads for relatively smooth targets (T, P).
-    temp = dense(64, "temperature_head_dense_1")(trunk)
+    temp = dense(head_hidden_width, "temperature_head_dense_1")(trunk)
     temperature_k = dense(1, "temperature_k", activation="linear")(temp)
 
-    pressure = dense(64, "pressure_head_dense_1")(trunk)
+    pressure = dense(head_hidden_width, "pressure_head_dense_1")(trunk)
     pressure_pa = dense(1, "pressure_pa", activation="linear")(pressure)
 
     # Larger heads for noisier targets (U, V wind).
-    wind_u = dense(128, "wind_u_head_dense_1")(trunk)
-    wind_u = dense(64, "wind_u_head_dense_2")(wind_u)
+    wind_u = dense(2 * head_hidden_width, "wind_u_head_dense_1")(trunk)
+    wind_u = dense(head_hidden_width, "wind_u_head_dense_2")(wind_u)
     wind_u = dense(1, "wind_u", activation="linear")(wind_u)
 
-    wind_v = dense(128, "wind_v_head_dense_1")(trunk)
-    wind_v = dense(64, "wind_v_head_dense_2")(wind_v)
+    wind_v = dense(2 * head_hidden_width, "wind_v_head_dense_1")(trunk)
+    wind_v = dense(head_hidden_width, "wind_v_head_dense_2")(wind_v)
     wind_v = dense(1, "wind_v", activation="linear")(wind_v)
 
     model = keras.Model(
@@ -206,7 +256,10 @@ def build_multi_head_mlp(
         name="multi_task_multi_head_mlp_regressor",
     )
 
-    losses = {name: keras.losses.Huber(delta=1.0, name=f"{name}_huber") for name in TARGET_OUTPUTS}
+    losses = {
+        name: keras.losses.Huber(delta=float(huber_delta), name=f"{name}_huber")
+        for name in TARGET_OUTPUTS
+    }
     metrics = {
         name: [
             keras.metrics.MeanAbsoluteError(name="mae"),
@@ -216,17 +269,91 @@ def build_multi_head_mlp(
     }
 
     if loss_weights is None:
-        weight_dict = {name: 1.0 for name in TARGET_OUTPUTS}
+        weight_dict = dict(DEFAULT_LOSS_WEIGHTS)
     else:
-        weight_dict = {name: float(loss_weights.get(name, 1.0)) for name in TARGET_OUTPUTS}
+        weight_dict = {
+            name: float(loss_weights.get(name, DEFAULT_LOSS_WEIGHTS[name]))
+            for name in TARGET_OUTPUTS
+        }
+
+    optimizer = None
+    if use_adamw:
+        adamw_cls = getattr(keras.optimizers, "AdamW", None)
+        if adamw_cls is not None:
+            optimizer = adamw_cls(learning_rate=learning_rate, weight_decay=float(weight_decay))
+    if optimizer is None:
+        optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
 
     model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
+        optimizer=optimizer,
         loss=losses,
         loss_weights=weight_dict,
         metrics=metrics,
     )
     return model
+
+
+# ---------------------------------------------------------------------------
+# Welford online accumulator for streaming feature normalization.
+#
+# The previous implementation cast the entire X_train_raw to float64 to compute
+# per-column mean/std without precision drift. For (N, F) = (3e6, 42) that is a
+# ~1 GB transient copy. Welford's running update lets us achieve the same
+# numerical stability while consuming the matrix in chunks of, say, 100k rows.
+# ---------------------------------------------------------------------------
+class WelfordAccumulator:
+    """Per-column online mean/variance using Welford's algorithm.
+
+    All running stats are kept in float64 so chunks of float32 samples can be
+    summed without catastrophic cancellation, even for tens of millions of rows.
+    """
+
+    def __init__(self, n_features: int) -> None:
+        self.n_features = int(n_features)
+        self._count = 0
+        self._mean = np.zeros(self.n_features, dtype=np.float64)
+        self._m2 = np.zeros(self.n_features, dtype=np.float64)
+
+    def update(self, X_chunk: np.ndarray) -> None:
+        if X_chunk.size == 0:
+            return
+        if X_chunk.ndim != 2 or X_chunk.shape[1] != self.n_features:
+            raise ValueError(
+                f"WelfordAccumulator: expected (N, {self.n_features}) chunk, got {X_chunk.shape}"
+            )
+        # Convert chunk to float64 just for the reduction; this is a single-chunk
+        # cost rather than full-matrix cost.
+        chunk = X_chunk.astype(np.float64, copy=False)
+        nb = chunk.shape[0]
+        chunk_mean = chunk.mean(axis=0)
+        chunk_m2 = ((chunk - chunk_mean) ** 2).sum(axis=0)
+
+        if self._count == 0:
+            self._count = nb
+            self._mean = chunk_mean
+            self._m2 = chunk_m2
+            return
+
+        na = self._count
+        delta = chunk_mean - self._mean
+        n_total = na + nb
+        # Parallel-algorithm form of Welford's update for combining batches.
+        self._mean = self._mean + delta * (nb / n_total)
+        self._m2 = self._m2 + chunk_m2 + (delta ** 2) * (na * nb / n_total)
+        self._count = n_total
+
+    @property
+    def count(self) -> int:
+        return self._count
+
+    def mean(self) -> np.ndarray:
+        return self._mean.astype(np.float32)
+
+    def std(self) -> np.ndarray:
+        if self._count < 2:
+            return np.ones(self.n_features, dtype=np.float32)
+        var = self._m2 / max(1, self._count - 1)
+        return _safe_std(np.sqrt(var).astype(np.float32))
 
 
 class MultiHeadMLPWeatherModel:
@@ -281,17 +408,25 @@ class MultiHeadMLPWeatherModel:
     def compute_normalization(
         X_train_raw: np.ndarray,
         train_targets: Mapping[str, np.ndarray],
+        chunk_rows: int = 200_000,
     ) -> Tuple[np.ndarray, np.ndarray, Dict[str, float], Dict[str, float], Dict[str, np.ndarray]]:
         """Compute per-feature and per-target normalization stats from the TRAIN split only.
 
-        Reductions are done in float64 to avoid catastrophic precision loss
-        when summing tens of millions of float32 values, then cast back to
-        float32 for storage. This is important because float32 mean over 20M
-        rows can drift by O(1) units, which silently breaks normalization.
+        Uses :class:`WelfordAccumulator` to stream over X in chunks of
+        ``chunk_rows`` rows. This avoids the previous full-matrix float64 copy
+        (which doubled peak memory during normalization) while keeping the same
+        numerical stability for tens of millions of rows.
         """
-        X64 = X_train_raw.astype(np.float64, copy=False) if X_train_raw.dtype != np.float64 else X_train_raw
-        x_mean = X64.mean(axis=0).astype(np.float32)
-        x_std = _safe_std(X64.std(axis=0).astype(np.float32))
+        if X_train_raw.ndim != 2:
+            raise ValueError(f"compute_normalization expects 2-D X, got shape {X_train_raw.shape}")
+
+        n_rows, n_features = X_train_raw.shape
+        acc = WelfordAccumulator(n_features=n_features)
+        step = max(1, int(chunk_rows))
+        for start in range(0, n_rows, step):
+            acc.update(X_train_raw[start:start + step])
+        x_mean = acc.mean()
+        x_std = _safe_std(acc.std())
 
         y_mean: Dict[str, float] = {}
         y_std: Dict[str, float] = {}
@@ -301,8 +436,10 @@ class MultiHeadMLPWeatherModel:
             if era5_key not in train_targets:
                 raise KeyError(f"Missing training target: {era5_key}")
             y = _forward_target_transform(output_name, train_targets[era5_key])
-            mean = float(np.mean(y.astype(np.float64)))
-            std = float(np.std(y.astype(np.float64)))
+            # Targets are 1-D; Welford on a single column would just be overhead.
+            y64 = y.astype(np.float64, copy=False)
+            mean = float(np.mean(y64))
+            std = float(np.std(y64))
             if abs(std) < 1e-8:
                 std = 1.0
             y_mean[output_name] = mean
@@ -310,6 +447,38 @@ class MultiHeadMLPWeatherModel:
             y_transformed[output_name] = y
 
         return x_mean, x_std, y_mean, y_std, y_transformed
+
+    @staticmethod
+    def compute_normalization_streaming(
+        x_chunks: Iterable[np.ndarray],
+        target_chunks: Mapping[str, Iterable[np.ndarray]],
+        n_features: int,
+    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, float], Dict[str, float]]:
+        """Welford-based normalization for fully streamed pipelines.
+
+        Use this when you cannot materialize X_train_raw in RAM at all (e.g.
+        very large multi-year training runs). Each input is an iterable of
+        chunks; the function consumes them once and never holds the full
+        dataset.
+        """
+        x_acc = WelfordAccumulator(n_features=n_features)
+        for chunk in x_chunks:
+            x_acc.update(np.asarray(chunk))
+
+        y_mean: Dict[str, float] = {}
+        y_std: Dict[str, float] = {}
+        for era5_key, output_name in ERA5_TO_OUTPUT.items():
+            chunks = target_chunks.get(era5_key)
+            if chunks is None:
+                raise KeyError(f"Missing streaming target: {era5_key}")
+            y_acc = WelfordAccumulator(n_features=1)
+            for raw in chunks:
+                y = _forward_target_transform(output_name, np.asarray(raw)).reshape(-1, 1)
+                y_acc.update(y)
+            y_mean[output_name] = float(y_acc.mean()[0])
+            y_std[output_name] = float(y_acc.std()[0])
+
+        return x_acc.mean(), _safe_std(x_acc.std()), y_mean, y_std
 
     @staticmethod
     def normalize_targets(
@@ -352,7 +521,7 @@ class MultiHeadMLPWeatherModel:
             raise FileNotFoundError(f"Feature metadata file not found: {feature_path}")
 
         try:
-            keras_model = keras.models.load_model(model_path)
+            keras_model = keras.models.load_model(model_path, compile=False)
         except Exception as exc:  # pragma: no cover - depends on TF version
             raise RuntimeError(
                 f"TensorFlow could not load {model_path}. This usually means a TF "

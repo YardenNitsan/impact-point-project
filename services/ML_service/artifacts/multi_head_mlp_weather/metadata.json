@@ -1,0 +1,121 @@
+{
+  "model_type": "Multi-Task Multi-Head MLP Regressor",
+  "backend": "multi_head_mlp",
+  "created_utc": "2026-05-08T00:17:39.316987+00:00",
+  "year": 2025,
+  "months": [
+    5
+  ],
+  "n_train": 5270000,
+  "n_val": 620000,
+  "n_test": 310000,
+  "seed": 42,
+  "training_config": {
+    "batch_size": 8192,
+    "max_epochs": 300,
+    "learning_rate": 0.002,
+    "dropout_rate": 0.0,
+    "early_stopping_patience": 60,
+    "reduce_lr_patience": 10,
+    "loss": "Huber(delta=0.5) on normalized targets per head",
+    "huber_delta": 0.5,
+    "optimizer": "AdamW",
+    "weight_decay": 1e-05,
+    "lr_schedule": "cosine",
+    "warmup_epochs": 5,
+    "min_lr": 5e-07,
+    "loss_weights": {
+      "temperature_k": 0.5,
+      "pressure_pa": 0.5,
+      "wind_u": 1.5,
+      "wind_v": 1.5
+    },
+    "train_ratio": 0.85,
+    "val_ratio": 0.1,
+    "max_total_train_samples": 0
+  },
+  "architecture": {
+    "type": "residual_mlp_multi_head",
+    "stem": "Dense(512, linear)",
+    "n_residual_blocks": 4,
+    "block_width": 512,
+    "block": [
+      "BN",
+      "ReLU",
+      "Dense(512, linear)",
+      "BN",
+      "ReLU",
+      "Dropout(off)",
+      "Dense(512, linear)",
+      "Add(skip)"
+    ],
+    "heads": {
+      "temperature_k": [
+        "Dense(128, relu)",
+        "Dense(1, linear)"
+      ],
+      "pressure_pa": [
+        "Dense(128, relu)",
+        "Dense(1, linear)"
+      ],
+      "wind_u": [
+        "Dense(256, relu)",
+        "Dense(128, relu)",
+        "Dense(1, linear)"
+      ],
+      "wind_v": [
+        "Dense(256, relu)",
+        "Dense(128, relu)",
+        "Dense(1, linear)"
+      ]
+    }
+  },
+  "target_transforms": {
+    "temperature_k": "identity",
+    "pressure_pa": "log",
+    "wind_u": "identity",
+    "wind_v": "identity"
+  },
+  "feature_count": 38,
+  "feature_names": [
+    "lat_norm",
+    "lon_norm",
+    "abs_lat_norm",
+    "altitude_km",
+    "log1p_altitude_km",
+    "altitude_km_sq",
+    "altitude_km_cu",
+    "sin_lat",
+    "cos_lat",
+    "sin_lon",
+    "cos_lon",
+    "sphere_x",
+    "sphere_y",
+    "sphere_z",
+    "altitude_x_sin_lat",
+    "altitude_x_cos_lat",
+    "altitude_x_sin_lon",
+    "altitude_x_cos_lon",
+    "altitude_x_abs_lat_norm",
+    "day_of_year_norm",
+    "utc_hour_norm",
+    "local_solar_hour_norm",
+    "utc_sin_1",
+    "utc_cos_1",
+    "utc_sin_2",
+    "utc_cos_2",
+    "solar_sin_1",
+    "solar_cos_1",
+    "solar_sin_2",
+    "solar_cos_2",
+    "lat_sin_1",
+    "lat_cos_1",
+    "lon_sin_1",
+    "lon_cos_1",
+    "lat_sin_2",
+    "lat_cos_2",
+    "lon_sin_2",
+    "lon_cos_2"
+  ],
+  "data_root": "/mnt/c/Users/yarde/Documents/impact-point-project/data/era5"
+}

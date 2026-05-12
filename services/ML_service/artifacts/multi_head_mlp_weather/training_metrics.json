@@ -1,0 +1,77 @@
+{
+  "model_type": "Multi-Task Multi-Head MLP Regressor",
+  "backend": "multi_head_mlp",
+  "artifact_dir": "/mnt/c/Users/yarde/Documents/impact-point-project/services/ML_service/artifacts/multi_head_mlp_weather_real_20260508_022527",
+  "model_path": "/mnt/c/Users/yarde/Documents/impact-point-project/services/ML_service/artifacts/multi_head_mlp_weather_real_20260508_022527/model.keras",
+  "normalization_path": "/mnt/c/Users/yarde/Documents/impact-point-project/services/ML_service/artifacts/multi_head_mlp_weather_real_20260508_022527/normalization_stats.json",
+  "feature_metadata_path": "/mnt/c/Users/yarde/Documents/impact-point-project/services/ML_service/artifacts/multi_head_mlp_weather_real_20260508_022527/feature_metadata.json",
+  "n_train": 5270000,
+  "n_val": 620000,
+  "n_test": 310000,
+  "train": {
+    "temperature_k": {
+      "mae": 1.097227703423111,
+      "rmse": 1.4673829408960604,
+      "max_abs": 18.427398681640625
+    },
+    "pressure_pa": {
+      "mae": 491.3588625008918,
+      "rmse": 797.4665269326716,
+      "max_abs": 11017.71875
+    },
+    "wind_u": {
+      "mae": 1.5927091277056447,
+      "rmse": 2.111853200154865,
+      "max_abs": 32.421634674072266
+    },
+    "wind_v": {
+      "mae": 1.2551171974817288,
+      "rmse": 1.6808596106677853,
+      "max_abs": 43.557395935058594
+    }
+  },
+  "val": {
+    "temperature_k": {
+      "mae": 1.127227156780612,
+      "rmse": 1.513726648700501,
+      "max_abs": 18.26611328125
+    },
+    "pressure_pa": {
+      "mae": 498.00485929309474,
+      "rmse": 809.039536086873,
+      "max_abs": 10855.140625
+    },
+    "wind_u": {
+      "mae": 1.8608979831137964,
+      "rmse": 2.5365471878311,
+      "max_abs": 33.150115966796875
+    },
+    "wind_v": {
+      "mae": 1.7218405363649514,
+      "rmse": 2.3762113088924335,
+      "max_abs": 39.16814613342285
+    }
+  },
+  "test": {
+    "temperature_k": {
+      "mae": 1.1264875173261089,
+      "rmse": 1.5132265906636269,
+      "max_abs": 17.922119140625
+    },
+    "pressure_pa": {
+      "mae": 497.69174434932586,
+      "rmse": 804.9999631399414,
+      "max_abs": 10045.546875
+    },
+    "wind_u": {
+      "mae": 1.8543833854029255,
+      "rmse": 2.5208549788027796,
+      "max_abs": 33.474464416503906
+    },
+    "wind_v": {
+      "mae": 1.7219648312361986,
+      "rmse": 2.3759269259197295,
+      "max_abs": 29.640475273132324
+    }
+  }
+}
