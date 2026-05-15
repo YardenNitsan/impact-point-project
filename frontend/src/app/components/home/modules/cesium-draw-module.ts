@@ -10,7 +10,6 @@ import {
   JulianDate,
   LinearApproximation,
   SampledPositionProperty,
-  VelocityOrientationProperty,
   Viewer,
   sampleTerrainMostDetailed,
   Cartesian2,
@@ -72,6 +71,10 @@ const LABEL_PIXEL_OFFSET_Y = -12;
 const TERRAIN_CACHE_MAX_KEYS = 32;
 const terrainCache = new Map<string, number[]>();
 
+// Constant tracking offset (east, north, up in entity local ENU frame).
+// Wrapped in a ConstantProperty so Cesium's EntityView can read it as a
+// regular Property; using a CONSTANT viewFrom means any time Cesium re-frames
+// the tracked camera it goes to the same offset (no spontaneous angle jumps).
 const TRACKED_VIEW_FROM = new Cartesian3(-1500.0, 0.0, 900.0);
 const TRACKED_VIEW_FROM_PROPERTY = new ConstantProperty(TRACKED_VIEW_FROM);
 
@@ -460,10 +463,20 @@ export async function drawTrajectoryLOD(
     ),
   });
 
+  // NOTE on viewFrom:
+  // We pin viewFrom to a CONSTANT offset (TRACKED_VIEW_FROM_PROPERTY) instead
+  // of leaving it undefined. With viewFrom undefined, Cesium derives the
+  // tracked-camera offset from the entity's bounding sphere, which is not
+  // perfectly stable when the entity has a point + a scaling label — any
+  // time Cesium internally re-frames (re-tracking, position-property swap,
+  // EntityView state reset) it picks a slightly different offset and the
+  // camera appears to "jump to a different angle by itself".
+  // A constant viewFrom guarantees that any re-frame uses the same offset,
+  // so no spontaneous jumps.
   if (!handles.movingEntity) {
     handles.movingEntity = viewer.entities.add({
       position: handles.movingProperty,
-      // viewFrom: TRACKED_VIEW_FROM_PROPERTY,
+      viewFrom: TRACKED_VIEW_FROM_PROPERTY,
       point: {
         pixelSize: MOVING_POINT_PIXEL_SIZE,
         color: Color.RED,
@@ -474,8 +487,7 @@ export async function drawTrajectoryLOD(
     });
   } else {
     handles.movingEntity.position = handles.movingProperty;
-    // handles.movingEntity.viewFrom = TRACKED_VIEW_FROM_PROPERTY;
-    handles.movingEntity.viewFrom = undefined;
+    handles.movingEntity.viewFrom = TRACKED_VIEW_FROM_PROPERTY;
     handles.movingEntity.label = movingLabel;
   }
 
@@ -493,7 +505,12 @@ export async function drawTrajectoryLOD(
   viewer.clock.multiplier = DEFAULT_SIMULATION_SPEED;
   viewer.timeline.zoomTo(animationStartTime, animationStopTime);
   viewer.clock.shouldAnimate = true;
-  viewer.trackedEntity = handles.movingEntity;
+
+  // Do not reassign trackedEntity if Cesium already tracks this entity.
+  // Reassigning can cause EntityView to re-initialize and snap the camera.
+  if (viewer.trackedEntity !== handles.movingEntity) {
+    viewer.trackedEntity = handles.movingEntity;
+  }
 
   viewer.scene.requestRenderMode && viewer.scene.requestRender();
   return handles;
