@@ -1,0 +1,95 @@
+<svg width="1280" height="520" viewBox="0 0 1280 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#050816"/>
+      <stop offset="0.52" stop-color="#0A1024"/>
+      <stop offset="1" stop-color="#062938"/>
+    </linearGradient>
+
+    <radialGradient id="glowA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1010 112) rotate(130) scale(430 270)">
+      <stop stop-color="#22D3EE" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="glowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(270 390) rotate(-24) scale(430 250)">
+      <stop stop-color="#8B5CF6" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="trajectory" x1="182" y1="338" x2="1098" y2="166" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="0.48" stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.23 0 0 0 0 0.83 0 0 0 0 0.94 0 0 0 0.45 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="1278" height="518" rx="32" fill="url(#bg)" stroke="#1E293B" stroke-width="2"/>
+  <rect x="1" y="1" width="1278" height="518" rx="32" fill="url(#glowA)"/>
+  <rect x="1" y="1" width="1278" height="518" rx="32" fill="url(#glowB)"/>
+
+  <g opacity="0.10">
+    <path d="M96 116H1184" stroke="#CBD5E1"/>
+    <path d="M96 176H1184" stroke="#CBD5E1"/>
+    <path d="M96 236H1184" stroke="#CBD5E1"/>
+    <path d="M96 296H1184" stroke="#CBD5E1"/>
+    <path d="M96 356H1184" stroke="#CBD5E1"/>
+    <path d="M96 416H1184" stroke="#CBD5E1"/>
+    <path d="M160 70V455" stroke="#CBD5E1"/>
+    <path d="M320 70V455" stroke="#CBD5E1"/>
+    <path d="M480 70V455" stroke="#CBD5E1"/>
+    <path d="M640 70V455" stroke="#CBD5E1"/>
+    <path d="M800 70V455" stroke="#CBD5E1"/>
+    <path d="M960 70V455" stroke="#CBD5E1"/>
+    <path d="M1120 70V455" stroke="#CBD5E1"/>
+  </g>
+
+  <path d="M184 340 C 362 236, 562 166, 764 151 C 911 140, 1036 159, 1098 191"
+        stroke="#67E8F9" stroke-opacity="0.20" stroke-width="22" stroke-linecap="round" filter="url(#softGlow)"/>
+  <path d="M184 340 C 362 236, 562 166, 764 151 C 911 140, 1036 159, 1098 191"
+        stroke="url(#trajectory)" stroke-width="7" stroke-linecap="round"/>
+
+  <circle cx="184" cy="340" r="11" fill="#38BDF8"/>
+  <circle cx="184" cy="340" r="27" stroke="#38BDF8" stroke-opacity="0.34" stroke-width="4"/>
+  <circle cx="1098" cy="191" r="13" fill="#F97316"/>
+  <circle cx="1098" cy="191" r="31" stroke="#F97316" stroke-opacity="0.34" stroke-width="4"/>
+  <circle cx="1098" cy="191" r="55" stroke="#F97316" stroke-opacity="0.16" stroke-width="3"/>
+
+  <text x="640" y="210" text-anchor="middle" fill="#FFFFFF"
+        font-family="Inter, Segoe UI, Arial, sans-serif" font-size="76" font-weight="900" letter-spacing="-2">
+    ImpactPoint
+  </text>
+
+  <text x="640" y="260" text-anchor="middle" fill="#DDE7F3"
+        font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="700">
+    Physics-driven trajectory simulation on a real 3D globe
+  </text>
+
+  <text x="640" y="296" text-anchor="middle" fill="#94A3B8"
+        font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" font-weight="500">
+    Computational physics · weather-aware modeling · ML approximation · CesiumJS visualization
+  </text>
+
+  <g transform="translate(145 392)">
+    <rect width="225" height="70" rx="18" fill="#0F172A" fill-opacity="0.82" stroke="#263449"/>
+    <text x="24" y="30" fill="#94A3B8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="1.1">SIMULATION</text>
+    <text x="24" y="53" fill="#F8FAFC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="850">3DOF Solver</text>
+
+    <rect x="255" width="225" height="70" rx="18" fill="#0F172A" fill-opacity="0.82" stroke="#263449"/>
+    <text x="279" y="30" fill="#94A3B8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="1.1">ENVIRONMENT</text>
+    <text x="279" y="53" fill="#F8FAFC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="850">Weather Layer</text>
+
+    <rect x="510" width="225" height="70" rx="18" fill="#0F172A" fill-opacity="0.82" stroke="#263449"/>
+    <text x="534" y="30" fill="#94A3B8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="1.1">INTELLIGENCE</text>
+    <text x="534" y="53" fill="#F8FAFC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="850">ML Approximation</text>
+
+    <rect x="765" width="225" height="70" rx="18" fill="#0F172A" fill-opacity="0.82" stroke="#263449"/>
+    <text x="789" y="30" fill="#94A3B8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="1.1">VISUALIZATION</text>
+    <text x="789" y="53" fill="#F8FAFC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="850">CesiumJS Globe</text>
+  </g>
+</svg>
