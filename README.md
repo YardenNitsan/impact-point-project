@@ -1,725 +1,698 @@
+<div align="center">
+
 # ImpactPoint
 
-### Physics‑Driven Trajectory Simulation & 3D Visualization Platform
+### Physics-Driven Trajectory Simulation & 3D Visualization Platform
 
-ImpactPoint is an advanced simulation platform designed to model,
-analyze, and visualize projectile trajectories using a combination of
-**physics-based numerical simulation**, **machine learning
-approximation**, and **interactive 3D geospatial rendering**.
+<p align="center">
+  A full-stack, weather-aware projectile simulation platform combining <b>computational physics</b>, <b>machine learning</b>, and <b>interactive 3D visualization</b>.
+</p>
 
-The system combines multiple engineering domains:
+<p align="center">
+  <a href="https://github.com/YardenNitsan/impact-point-project">
+    <img src="https://img.shields.io/badge/Repository-GitHub-181717?style=for-the-badge&logo=github" alt="GitHub Repo"/>
+  </a>
+  <img src="https://img.shields.io/badge/Frontend-Angular-DD0031?style=for-the-badge&logo=angular" alt="Angular"/>
+  <img src="https://img.shields.io/badge/3D-CesiumJS-6CADDF?style=for-the-badge" alt="CesiumJS"/>
+  <img src="https://img.shields.io/badge/API-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=node.js" alt="Node.js"/>
+  <img src="https://img.shields.io/badge/Physics-FastAPI-009688?style=for-the-badge&logo=fastapi" alt="FastAPI"/>
+  <img src="https://img.shields.io/badge/ML-Python-3776AB?style=for-the-badge&logo=python" alt="Python"/>
+  <img src="https://img.shields.io/badge/Database-MongoDB-47A248?style=for-the-badge&logo=mongodb" alt="MongoDB"/>
+  <img src="https://img.shields.io/badge/Containerized-Docker-2496ED?style=for-the-badge&logo=docker" alt="Docker"/>
+</p>
 
-- Computational physics
-- Numerical simulation
-- Machine learning approximation
-- Distributed system architecture
-- 3D geospatial visualization
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Academic%20Final%20Project-success?style=flat-square" alt="Status"/>
+  <img src="https://img.shields.io/badge/Architecture-Microservices-blue?style=flat-square" alt="Architecture"/>
+  <img src="https://img.shields.io/badge/Simulation-3DOF-orange?style=flat-square" alt="Simulation"/>
+  <img src="https://img.shields.io/badge/Visualization-3D%20Globe-purple?style=flat-square" alt="Visualization"/>
+</p>
 
-The goal of the platform is to allow users to launch simulated
-trajectories from any point on Earth and observe the full flight path
-and impact point in a **real-time interactive 3D environment**.
-
-The system integrates:
-
-- **3DOF ballistic physics engine**
-- **Machine learning trajectory approximation model (KNN)**
-- **Interactive CesiumJS WebGL globe**
-- **Service-oriented backend architecture**
-
-This project is designed as a **modular microservice system**, where
-each component performs a clearly defined role such as orchestration,
-simulation, visualization, or prediction.
+</div>
 
 ---
 
-# System Overview
+## Overview
 
-ImpactPoint is composed of several independent services that communicate
-through REST APIs.
+**ImpactPoint** is a full-stack simulation platform for modeling, analyzing, and visualizing projectile trajectories in a realistic 3D geographic environment.
 
-Key services include:
+The system combines:
 
-- **Frontend Visualization**
-- **API Orchestration Server**
-- **Physics Simulation Engine**
-- **Machine Learning Prediction Service**
-- **Simulation and Dataset Databases**
+- **Computational physics**
+- **Numerical simulation**
+- **Atmospheric and weather-aware modeling**
+- **Machine learning-based environmental approximation**
+- **Microservice architecture**
+- **Interactive 3D visualization with CesiumJS**
 
-Each service runs independently and can be scaled, deployed, or tested
-in isolation.
+It allows a user to define launch parameters from a real-world location, run a physics-driven trajectory simulation, and inspect the resulting path and impact point on an interactive 3D globe.
 
 ---
 
-# Core Capabilities
+## Why ImpactPoint?
 
-## Physics-Based Trajectory Simulation
+ImpactPoint was designed to bridge the gap between:
 
-At the heart of ImpactPoint is a **3 Degree of Freedom (3DOF) ballistic
-solver** implemented in Python.
+- **theoretical projectile motion**
+- **real environmental influence**
+- **high-performance computation**
+- **user-friendly visual exploration**
 
-The simulation engine models projectile motion using numerical
-integration techniques and physical forces.
+Instead of relying on a simple vacuum/parabolic model, the system integrates atmospheric and weather-related factors such as temperature, pressure, and wind into the simulation pipeline, producing results that are significantly more realistic.
 
-Capabilities include:
+---
 
-- Gravity-based motion modeling
-- Aerodynamic drag computation
-- Atmospheric condition modeling
+## Key Highlights
+
+<table>
+  <tr>
+    <td width="50%">
+      <h3>Physics-Based Simulation</h3>
+      <ul>
+        <li>3DOF projectile dynamics</li>
+        <li>Gravity and drag modeling</li>
+        <li>Numerical timestep integration</li>
+        <li>Terrain-aware impact detection</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>Weather-Aware Pipeline</h3>
+      <ul>
+        <li>Temperature integration</li>
+        <li>Pressure integration</li>
+        <li>Wind component handling</li>
+        <li>Atmospheric influence on trajectory</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h3>Machine Learning Support</h3>
+      <ul>
+        <li>Fast environmental approximation</li>
+        <li>Reduced dependency on repeated weather queries</li>
+        <li>Improved runtime efficiency</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>Interactive 3D Visualization</h3>
+      <ul>
+        <li>Built with Angular + CesiumJS</li>
+        <li>Real-world geographic visualization</li>
+        <li>Trajectory rendering on a 3D globe</li>
+        <li>Impact point inspection</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+---
+
+## Core Features
+
+### 1. Physics-Based Trajectory Solver
+
+The core simulation engine is implemented in **Python** and models projectile flight using a **3 Degree of Freedom (3DOF)** ballistic solver.
+
+The solver includes:
+
+- Gravity-based motion
+- Aerodynamic drag
+- Atmospheric density effects
+- Temperature and pressure influence
 - Wind influence along the trajectory
+- Numerical integration over time
 - Terrain-aware impact detection
-- Numerical timestep integration
+- Full trajectory generation for visualization
 
-The solver produces trajectories consisting of **thousands of sampled
-spatial positions**, which are later used for visualization and machine
-learning dataset generation.
+The internal simulation may generate a large number of points, while the rendered output can be sampled to remain efficient for frontend visualization.
 
 ---
 
-## Machine Learning Trajectory Approximation
+### 2. Weather & Environmental Integration
 
-In addition to the physics simulation engine, ImpactPoint includes a
-**machine learning model** designed to approximate projectile
-trajectories.
+ImpactPoint includes a dedicated **Weather Service** responsible for resolving environmental values needed by the physics engine.
 
-The ML system uses a **K-Nearest Neighbors (KNN)** approach to estimate
-trajectories based on previously simulated data.
+These include:
 
-Pipeline:
+- Temperature
+- Pressure
+- Wind components
+- Altitude-related environmental context
 
-1.  Randomized launch parameters are generated.
-2.  Full physics simulations are executed.
-3.  Trajectories are normalized.
-4.  Motion is encoded as relative displacement sequences.
-5.  KNN identifies the closest trajectories in the dataset.
-6.  A weighted average produces the predicted trajectory.
-
-The ML model is designed to provide **fast approximations of
-computationally expensive simulations**.
+This allows the simulation to reflect real atmospheric influence rather than behaving like a simplified textbook-only projectile model.
 
 ---
 
-## Interactive 3D Visualization
+### 3. Machine Learning-Based Approximation
 
-The frontend uses **Angular and CesiumJS** to render a fully interactive
-3D globe.
+A dedicated **ML Service** helps approximate weather-related values used during the simulation pipeline.
 
-Users can visualize:
-
-- Complete projectile trajectories
-- Real-time animated flight paths
-- Terrain-aware impact points
-- Camera adaptive rendering
-- Trajectory interpolation
-- High-performance rendering of simulation data
-
-The visualization layer allows the system to display thousands of
-trajectory points efficiently within a WebGL environment.
+This improves runtime efficiency by reducing the need for expensive repeated environmental lookups while still maintaining meaningful physical behavior.
 
 ---
 
-# Architecture
+### 4. 3D Geographic Visualization
 
-ImpactPoint uses a **service orchestration architecture** designed for
-modularity and scalability.
+The frontend is built with **Angular** and **CesiumJS**, allowing the user to:
 
-Frontend → API Server → Physics Engine → ML Service → Databases
-
-Each service is responsible for its own logic and communicates through
-REST endpoints.
-
----
-
-# Project Structure
-
-The repository is organized into multiple top-level components.
-
-    impactpoint
-    │
-    ├── frontend
-    │   Angular + Cesium visualization layer
-    │
-    ├── services
-    │   ├── main-service        # Node.js API orchestration server
-    │   ├── physics-service     # Python ballistic simulation engine
-    │   └── ml-model-service    # Machine learning dataset & prediction service
-    │
-    ├── database
-    │
-    └── docs
+- Define launch conditions
+- Trigger simulations
+- View the resulting trajectory
+- Inspect the impact point
+- Navigate an interactive 3D globe
+- Visualize projectile behavior in a realistic environment
 
 ---
 
-# Requirements
-
-The project has been tested with the following environment:
-
-    Node.js v24.11.1
-    Python v3.13.12
-    Angular CLI v19
-    MongoDB
-    Docker (optional but recommended)
-
----
-
-# Setup
-
-## Clone Repository
-
-    git clone https://github.com/YardenNitsan/impactpoint.git
-    cd impactpoint
-
----
-
-# Original Detailed Setup Instructions
-
-The following sections preserve the original setup and run instructions
-provided with the project.
-
-These steps describe how to run each component independently during
-development.
-
----
-
-# ImpactPoint
-
-ImpactPoint is a physics‑driven trajectory simulation and visualization
-platform.
-
-The system integrates:
-
-- a **3DOF ballistic physics engine**
-- a **machine learning trajectory approximation model (KNN)**
-- an **interactive 3D geospatial visualization interface** built with
-  **Angular + CesiumJS**
-
-Users can launch simulated trajectories from any geographic coordinate
-and visualize the full flight path and impact point directly on a **3D
-globe**.
-
-The platform is built using a **service‑oriented architecture**
-separating:
-
-- visualization
-- API orchestration
-- physics simulation
-- machine learning prediction
-
-Each service manages its own responsibilities and storage.
-
----
-
-# Key Features
-
-## Physics Simulation Engine
-
-The core of ImpactPoint is a **3DOF ballistic trajectory solver**
-implemented in Python.
-
-Capabilities:
-
-- gravity‑based projectile dynamics
-- aerodynamic drag modeling
-- atmospheric modeling
-- wind influence along trajectory
-- terrain‑aware impact detection
-- numerical integration using fixed timestep solvers
-
-The solver generates full trajectories consisting of **thousands of
-sampled positions**.
-
----
-
-## Machine Learning Trajectory Approximation
-
-ImpactPoint includes a **K‑Nearest Neighbors (KNN)** model for fast
-trajectory prediction.
-
-Pipeline:
-
-1.  Random launch parameters are generated
-2.  Full physics simulations are executed
-3.  Trajectories are normalized
-4.  Motion represented as relative displacement sequences
-5.  KNN finds nearest trajectories
-6.  Weighted averaging produces predicted trajectory
-
-The ML service maintains its own **dataset database**.
-
----
-
-## 3D Visualization
-
-The frontend provides an interactive **CesiumJS WebGL globe**.
-
-Features:
-
-- real‑time trajectory rendering
-- animated projectile flight
-- terrain‑aware impact visualization
-- camera adaptive rendering
-- trajectory interpolation
-- dynamic sampling of simulation data
-
----
-
-# System Architecture
-
-ImpactPoint uses a **service orchestration architecture**.
-
-                     +----------------------+
-                     |      Frontend        |
-                     |   Angular + Cesium   |
-                     +----------+-----------+
-                                |
-                                | REST API
-                                |
-                     +----------v-----------+
-                     |      API Server      |
-                     |    Node.js / Express |
-                     +----------+-----------+
-                                |
-                                | Simulation Request
-                                |
-                     +----------v-----------+
-                     |    Physics Engine    |
-                     |    Python + FastAPI  |
-                     |     3DOF Solver      |
-                     +----------+-----------+
-                                |
-                                | Simulation Result
-                                |
-                     +----------v-----------+
-                     |   ML Model Service   |
-                     |    KNN Prediction    |
-                     +----------+-----------+
-                                |
-                    +-----------+-----------+
-                    |                       |
-            +-------v--------+     +--------v--------+
-            | Simulation DB  |     |   Dataset DB    |
-            |  (API Server)  |     |  (ML Service)   |
-            +----------------+     +-----------------+
-
-### Service Responsibilities
-
-Service Technology Responsibility
-
----
-
-Frontend Angular + Cesium Visualization
-API Server Node.js / Express Simulation orchestration
-Physics Engine Python / FastAPI 3DOF trajectory simulation
-ML Model Service Python KNN trajectory approximation
-
----
-
-# Project Structure
-
-    impactpoint
-    │
-    ├── frontend
-    │   Angular + Cesium visualization
-    │
-    ├── services
-    │   ├── main-service        # Node.js API
-    │   ├── physics-service     # Python simulation engine
-    │   └── ml-model-service    # KNN dataset & prediction
-    │
-    ├── database
-    │
-    └── docs
-
----
-
-# Requirements
-
-Tested with:
-
-    Node.js v24.11.1
-    Python v3.13.12
-    Angular CLI v19
-    MongoDB
-    Docker (optional)
-
----
-
-# Setup
-
-## Clone Repository
-
-    git clone https://github.com/YardenNitsan/impactpoint.git
-    cd impactpoint
-
----
-
-# API Server (Node.js + TypeScript)
-
-The API server is implemented using **Node.js, Express, and
-TypeScript**.
-
-Install dependencies:
-
-    cd services/main-service
-    npm install
-    npm install express cors axios dotenv mongoose
-
-# Running the API Server
-
-The API supports two modes of execution.
-
-## Development Mode (Recommended for Development)
-
-Used during active development.
-
-The server runs using **nodemon + ts-node**, which means:
-
-- TypeScript is executed directly without compiling.
-- The server automatically restarts when source files change.
-- No manual restart is required.
-
-Install dependencies for development:
-
-    npm install -D typescript ts-node nodemon @types/node @types/express
-
-Create tsconfig.json if you don't have:
-
-    npx tsc --init
-
-Example tsconfig.json:
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "esModuleInterop": true,
-    "strict": false,
-    "skipLibCheck": true
-  },
-  "include": ["src"]
-}
+## System Architecture
+
+ImpactPoint follows a **microservice-based architecture**.
+
+### High-Level Flow
+
+```text
+User
+ │
+ ▼
+Frontend (Angular + CesiumJS)
+ │
+ ▼
+Main API Service (Node.js / Express)
+ │
+ ▼
+Algorithm Service (Python / FastAPI Physics Engine)
+ │
+ ▼
+Weather Service (Python / FastAPI)
+ │
+ ▼
+ML Weather Service (Python / FastAPI)
 ```
 
-Add scripts to package.json:
+### Architecture Diagram
 
-```json
-"scripts": {
-  "dev": "nodemon --watch src --exec ts-node src/server.ts",
-  "build": "tsc",
-  "start": "node dist/server.js"
-}
+```mermaid
+flowchart TD
+    A[Frontend<br/>Angular + CesiumJS] --> B[Main API Service<br/>Node.js + Express]
+    B --> C[Algorithm Service<br/>Python + FastAPI]
+    C --> D[Weather Service<br/>Python + FastAPI]
+    D --> E[ML Weather Service<br/>Python + FastAPI]
+    B --> F[(MongoDB)]
 ```
 
-Start the server:
+---
 
-    npm run dev
+## Technology Stack
 
-Server will run at:
-
-    http://localhost:3000
+| Layer | Technology |
+|---|---|
+| Frontend | Angular, TypeScript, CesiumJS |
+| Backend API | Node.js, Express |
+| Physics / Simulation | Python, FastAPI, NumPy |
+| ML Layer | Python, FastAPI, ML model artifacts |
+| Database | MongoDB |
+| Containerization | Docker, Docker Compose |
 
 ---
 
-## Production Mode
+## Service Responsibilities
 
-Step 1 --- Compile TypeScript:
-
-    npm run build
-
-Step 2 --- Start compiled server:
-
-    npm start
-
----
-
-# Start Physics Service
-
-Install dependencies:
-
-    cd services/algorithm_service
-    pip install numpy matplotlib fastapi uvicorn requests
-
-Run service:
-
-    cd services/algorithm_service
-    python -m uvicorn main:app --reload
-
-Server:
-
-    http://localhost:8000
-
-API Documentation:
-
-    http://localhost:8000/docs
+| Service | Technology | Responsibility |
+|---|---|---|
+| **Frontend** | Angular + CesiumJS | User interface and 3D globe visualization |
+| **Main Service** | Node.js + Express | Main API layer and orchestration |
+| **Algorithm Service** | Python + FastAPI | Physics-based 3DOF trajectory simulation |
+| **Weather Service** | Python + FastAPI | Weather and atmospheric data layer |
+| **ML Weather Service** | Python + FastAPI | Fast approximation of environmental values |
+| **MongoDB** | MongoDB | Persistent storage |
 
 ---
 
-# Start Frontend
+## Repository Structure
 
-    cd frontend
-    npm install
-    npm install -g @angular/cli@19
-    ng serve
-
-Frontend runs at:
-
-    http://localhost:4200
+```text
+impact-point-project/
+│
+├── frontend/
+│   └── Angular + CesiumJS visualization client
+│
+├── services/
+│   ├── main-service/
+│   │   └── Node.js / Express orchestration service
+│   │
+│   ├── algorithm_service/
+│   │   └── Python / FastAPI physics simulation engine
+│   │
+│   ├── weather_service/
+│   │   └── Python / FastAPI weather/environment service
+│   │
+│   └── ML_service/
+│       └── Python / FastAPI machine learning service
+│
+├── scripts/
+│   └── Utility scripts
+│
+├── attacks_simulations/
+│   └── Simulation examples / test data
+│
+├── docker-compose.yml
+├── dev.ps1
+├── .gitignore
+└── README.md
+```
 
 ---
 
-# Development Orchestration Script
+## Quick Start
 
-To simplify local development, the project includes a **development
-orchestration script**:
+## Prerequisites
 
-    dev.ps1
+For the recommended Docker-based setup, install:
 
-This script automatically starts and stops the entire system in the
-correct order.
+- **Docker Desktop**
+- **Docker Compose**
 
-Services started:
+For manual development, install:
 
-- MongoDB container (Docker)
-- Physics Engine service (Python / FastAPI)
-- API Server (Node.js / Express)
-- Frontend application (Angular)
+- **Node.js**
+- **npm**
+- **Python**
+- **pip**
+- **Angular CLI**
+- **MongoDB**
 
-Each service is started only after the previous one becomes available.
+---
 
-The script stores process identifiers in:
+## Clone the Repository
 
-    .dev/dev_pids.json
+```bash
+git clone https://github.com/YardenNitsan/impact-point-project.git
+cd impact-point-project
+```
 
-allowing all services to be stopped safely.
+---
 
-## Running the Entire Project
+## Environment Files
 
-From the **project root folder**:
+> **Important:** Real `.env` files are not committed to the repository for security reasons.
 
-Start everything:
+The Docker Compose setup expects these local files:
+
+```text
+services/ML_service/.env
+services/weather_service/.env
+services/algorithm_service/.env.api
+services/algorithm_service/.env.dataset
+services/main-service/.env
+```
+
+If they do not exist, Docker Compose may fail before startup.
+
+### Create empty env files (Windows PowerShell)
+
+```powershell
+New-Item -ItemType File -Force services/ML_service/.env
+New-Item -ItemType File -Force services/weather_service/.env
+New-Item -ItemType File -Force services/algorithm_service/.env.api
+New-Item -ItemType File -Force services/algorithm_service/.env.dataset
+New-Item -ItemType File -Force services/main-service/.env
+```
+
+### Create empty env files (Linux / macOS / Git Bash)
+
+```bash
+touch services/ML_service/.env
+touch services/weather_service/.env
+touch services/algorithm_service/.env.api
+touch services/algorithm_service/.env.dataset
+touch services/main-service/.env
+```
+
+---
+
+## Running the Project with Docker Compose
+
+Docker Compose is the **recommended** way to run the full system.
+
+### First Run / After Dependency Changes
+
+Use this command the first time you run the project or after dependency / Dockerfile changes:
+
+```bash
+docker compose --profile api up --build
+```
+
+### Regular Run
+
+After everything is already built, use:
+
+```bash
+docker compose --profile api up
+```
+
+This starts the main application profile, including:
+
+- MongoDB
+- ML Weather Service
+- Weather Service
+- Algorithm / Physics Service
+- Main API Service
+- Frontend
+
+---
+
+## Application URLs
+
+After startup, the application should be available at:
+
+| Component | URL |
+|---|---|
+| **Frontend** | http://localhost:4200 |
+| **Main API Service** | http://localhost:3000 |
+| **ML Weather Service Docs** | http://localhost:8000/docs |
+| **Algorithm / Physics Service Docs** | http://localhost:8001/docs |
+| **Weather Service Docs** | http://localhost:8080/docs |
+| **MongoDB** | localhost:27017 |
+
+### Important Port Note
+
+The **Algorithm Service** runs internally on port `8000` inside its container, but is exposed to the host machine on port:
+
+```text
+8001
+```
+
+So from the browser, use:
+
+```text
+http://localhost:8001/docs
+```
+
+**Host port `8000` is used by the ML Weather Service.**
+
+---
+
+## Useful Docker Commands
+
+### Stop the project
+
+```bash
+docker compose down
+```
+
+### Stop and remove volumes
+
+```bash
+docker compose down -v
+```
+
+> Use `-v` carefully, because it removes persisted database volumes.
+
+### View all logs
+
+```bash
+docker compose logs -f
+```
+
+### View logs for a specific service
+
+```bash
+docker compose logs -f frontend
+docker compose logs -f main
+docker compose logs -f algorithm
+docker compose logs -f weather-service
+docker compose logs -f ml-weather
+docker compose logs -f mongo
+```
+
+### Check running containers
+
+```bash
+docker ps
+```
+
+---
+
+## Optional Dataset Profile
+
+The project also contains a dataset-related Docker profile intended for dataset-oriented workflows.
+
+To run dataset-related services:
+
+```bash
+docker compose --profile dataset up --build
+```
+
+For normal application execution, use:
+
+```bash
+docker compose --profile api up
+```
+
+---
+
+## Manual Development Mode
+
+Docker Compose is recommended for the full system, but services can also be run individually during development.
+
+### 1. Start MongoDB
+
+```bash
+docker run -d --name impactpoint-mongo -p 27017:27017 mongo
+```
+
+If the container already exists:
+
+```bash
+docker start impactpoint-mongo
+```
+
+---
+
+### 2. Start the Algorithm Service
+
+```bash
+cd services/algorithm_service
+python -m uvicorn main:app --reload --port 8000
+```
+
+Available at:
+
+```text
+http://localhost:8000/docs
+```
+
+> In Docker Compose mode, this same service is exposed externally on `http://localhost:8001/docs`.
+
+---
+
+### 3. Start the Main Service
+
+```bash
+cd services/main-service
+npm install
+npm run dev
+```
+
+Available at:
+
+```text
+http://localhost:3000
+```
+
+---
+
+### 4. Start the Frontend
+
+```bash
+cd frontend
+npm install
+ng serve
+```
+
+Available at:
+
+```text
+http://localhost:4200
+```
+
+---
+
+## PowerShell Development Script
+
+The repository includes a Windows development helper:
+
+```text
+dev.ps1
+```
+
+Example usage:
 
 ```powershell
 powershell ./dev.ps1 start
-```
-
-Stop everything:
-
-```powershell
 powershell ./dev.ps1 stop
-```
-
-Restart the environment:
-
-```powershell
 powershell ./dev.ps1 restart
-```
-
-Check system status:
-
-```powershell
 powershell ./dev.ps1 status
 ```
 
-This script ensures the correct startup order:
-
-MongoDB → Physics Engine → API Server → Frontend
+> Docker Compose is still the recommended way to run the full multi-service system.
 
 ---
 
-# Databases
+## Troubleshooting
 
-ImpactPoint uses two independent data stores.
+### Missing env file error
 
-### Simulation Database
-
-Managed by the **API server**.
-
-Stores:
-
-- simulation inputs
-- simulation results
-- trajectory metadata
-
-# Running MongoDB with Docker
-
-If you don't have MongoDB installed locally, you can run it using
-Docker.
-
-Start a MongoDB container:
+Create the required env files:
 
 ```bash
-docker run -d \
-  --name impactpoint-mongo \
-  -p 27017:27017 \
-  mongo
+touch services/ML_service/.env
+touch services/weather_service/.env
+touch services/algorithm_service/.env.api
+touch services/algorithm_service/.env.dataset
+touch services/main-service/.env
 ```
 
-### Dataset Database
+On PowerShell:
 
-Managed by the **ML service**.
-
-Stores:
-
-- trajectory dataset
-- normalized trajectories
-- ML training data
-
----
-
-# Docker Deployment (Recommended)
-
-ImpactPoint can run entirely using **Docker Compose**, allowing the
-entire system to start with a single command and without installing
-Node, Python, or MongoDB locally.
-
-Docker runs the following services as isolated containers:
-
-- Frontend (Angular + Cesium)
-- API Server (Node.js + Express)
-- Physics Engine (Python + FastAPI)
-- MongoDB database
-
-All containers communicate through an internal Docker network.
-
-## Architecture (Docker)
-
-Browser → Frontend Container → API Container → Physics Container →
-MongoDB
-
-Container communication:
-
-- API Server (Main Service) communicates with the Physics Engine
-  service: http://algorithm:8000
-
-- API Server (Main Service) communicates with the MongoDB database:
-  mongodb://mongo:27017
-
-No other services communicate directly with the database or with each
-other. All requests are orchestrated through the API Server.
-
-These hostnames work because Docker provides **automatic DNS
-resolution** between containers inside the same compose network.
-
-## Running the Entire System with Docker
-
-From the **project root directory**:
-
-Build and start all services:
-
-    docker compose up --build
-
-note: this will start the algorithm service with only one worker. to
-build the algorithm with multiple workers change the number in the
-docker-compose.yml to a desired number and run with:
-
-    docker compose --profile dataset up
-
-Docker will automatically start:
-
-- MongoDB container
-- Physics simulation service
-- Node.js API server
-- Angular frontend
-
-After startup the system will be available at:
-
-Frontend:
-
-    http://localhost:4200
-
-API Server:
-
-    http://localhost:3000
-
-Physics Engine API:
-
-    http://localhost:8000/docs
-
-## Stopping the System
-
-Stop containers:
-
-    CTRL + C
-
-Then cleanly remove containers and networks:
-
-    docker compose down
-
-## Restarting
-
-If containers were already built:
-
-    docker compose up
-
-If Dockerfiles or dependencies changed:
-
-    docker compose up --build
-
-## Viewing Logs
-
-View logs from all services:
-
-    docker compose logs -f
-
-View logs for a specific service:
-
-    docker compose logs main
-    docker compose logs algorithm
-    docker compose logs frontend
-    docker compose logs mongo
-
-## Verifying Containers
-
-List running containers:
-
-    docker ps
-
-Expected containers:
-
-    impact-point-project-main-1
-    impact-point-project-frontend-1
-    algorithm-service
-    impactpoint-mongo
-
-This confirms the full **microservice architecture is running inside
-Docker**.
+```powershell
+New-Item -ItemType File -Force services/ML_service/.env
+New-Item -ItemType File -Force services/weather_service/.env
+New-Item -ItemType File -Force services/algorithm_service/.env.api
+New-Item -ItemType File -Force services/algorithm_service/.env.dataset
+New-Item -ItemType File -Force services/main-service/.env
+```
 
 ---
 
-# Technologies
+### Port already in use
 
-### Frontend
+```bash
+docker compose down
+docker ps
+```
 
-- Angular
-- CesiumJS
-- TypeScript
+If needed:
 
-### Backend
-
-- Node.js
-- Express
-
-### Physics Engine
-
-- Python
-- FastAPI
-- NumPy
-
-### Machine Learning
-
-- Python
-- KNN
-
-### Database
-
-- MongoDB
-- Mongoose
+```bash
+docker stop <container-name>
+```
 
 ---
 
-# License
+### Frontend loads but simulation does not work
+
+Check backend logs:
+
+```bash
+docker compose logs -f main
+docker compose logs -f algorithm
+docker compose logs -f weather-service
+docker compose logs -f ml-weather
+```
+
+Also verify these are reachable:
+
+```text
+http://localhost:3000
+http://localhost:8001/docs
+http://localhost:8080/docs
+http://localhost:8000/docs
+```
+
+---
+
+### Algorithm docs are not on localhost:8000
+
+This is expected in Docker Compose mode.
+
+Use:
+
+```text
+http://localhost:8001/docs
+```
+
+The host machine's `8000` port is used by the ML Weather Service.
+
+---
+
+### Rebuild everything
+
+```bash
+docker compose --profile api up --build
+```
+
+### Clean restart
+
+```bash
+docker compose down
+docker compose --profile api up --build
+```
+
+---
+
+## Security Notes
+
+This repository is public, but sensitive local configuration files are intentionally excluded.
+
+Do **not** commit:
+
+```text
+.env
+.env.*
+API keys
+tokens
+passwords
+database credentials
+large raw datasets
+```
+
+---
+
+## Recommended Review Flow
+
+For reviewers / instructors:
+
+1. Clone the repository
+2. Create the required local `.env` files
+3. Start the system:
+
+```bash
+docker compose --profile api up --build
+```
+
+4. Open the frontend:
+
+```text
+http://localhost:4200
+```
+
+5. Optionally inspect the service documentation:
+
+```text
+http://localhost:8001/docs
+http://localhost:8080/docs
+http://localhost:8000/docs
+```
+
+---
+
+## Project Vision
+
+ImpactPoint demonstrates how **physics**, **software engineering**, **machine learning**, and **interactive visualization** can be integrated into one coherent system.
+
+It is designed not only as a simulation tool, but also as a software engineering project that emphasizes:
+
+- system architecture
+- modular service separation
+- maintainability
+- runtime efficiency
+- scientific modeling
+- user-facing visualization
+
+---
+
+## License
 
 Educational / research project.
