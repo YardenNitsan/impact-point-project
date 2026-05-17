@@ -2,7 +2,7 @@ export type SimulationListItemDto = {
   id: string;
   createdAt: Date;
   durationSeconds: number;
-  weatherSource: "machine" | "api" | "calculations";
+  weatherSource: "machine" | "api" | "knn" | "calculations";
 };
 
 export type CreateSimulationResponseDto = {
@@ -17,7 +17,7 @@ export type CreateSimulationResponseDto = {
 export type SimulationDetailsDto = {
   createdAt: Date;
   durationSeconds: number;
-  weatherSource: "machine" | "api" | "calculations";
+  weatherSource: "machine" | "api" | "knn" | "calculations";
   initialData: {
     lat: number;
     lon: number;
@@ -26,7 +26,7 @@ export type SimulationDetailsDto = {
     elevation: number;
     mass: number;
     initialSpeed: number;
-    weather_source?: "machine" | "api" | "calculations";
+    weather_source?: "machine" | "api" | "knn" | "calculations";
   };
 };
 
@@ -42,7 +42,7 @@ export function toSimulationListItemDto(input: {
   _id: { toString(): string };
   createdAt: Date;
   durationSeconds: number;
-  weather_source: "machine" | "api" | "calculations";
+  weather_source: "machine" | "api" | "knn" | "calculations";
 }): SimulationListItemDto {
   return {
     id: input._id.toString(),

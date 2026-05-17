@@ -388,8 +388,10 @@ def _build_service_runtime(
         requested_source = "manual"
     else:
         requested_source = str(initial_conditions.get("weather_source", "machine")).lower()
-        if requested_source not in {"api", "machine"}:
-            raise ValueError("weather_source must be 'calculations', 'api', or 'machine'")
+        if requested_source not in {"api", "machine", "knn"}:
+            raise ValueError(
+                "weather_source must be 'calculations', 'api', 'machine', or 'knn'"
+            )
 
         provider_client = HTTPWeatherProviderClient(
             name=requested_source,

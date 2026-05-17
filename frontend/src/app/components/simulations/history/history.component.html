@@ -10,7 +10,9 @@
             ? "Machine"
             : sim.weather_source === "api"
               ? "API"
-              : "Calculations"
+              : sim.weather_source === "knn"
+                ? "KNN"
+                : "Calculations"
         }}
       </div>
     </div>

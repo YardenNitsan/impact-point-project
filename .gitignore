@@ -72,6 +72,11 @@ frontend/public/cesium/
 .dev/
 
 # =========================
+# Claude Code local settings (per-user, not shared)
+# =========================
+.claude/settings.local.json
+
+# =========================
 # Scripts
 # =========================
 # Keep scripts code, ignore only virtualenvs inside scripts
@@ -91,3 +96,12 @@ services/ML_service/dataset.jsonl
 services/ML_service/artifacts/training_plots
 services/ML_service/artifacts/replotted_training_curves
 services/ML_service/.venv*
+
+# =========================
+# KNN generated files
+# =========================
+# dataset.npz and metadata.json are produced by train_knn.py / startup
+# bootstrap and are machine-specific — do not commit them.
+services/knn_service/artifacts/knn_weather/dataset.npz
+services/knn_service/artifacts/knn_weather/metadata.json
+services/knn_service/.venv*

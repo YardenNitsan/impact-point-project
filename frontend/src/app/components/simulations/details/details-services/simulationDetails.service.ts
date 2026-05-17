@@ -20,7 +20,7 @@ export interface SimulationDetails {
   durationSeconds: number;
   initialData: InitialData;
   coordinates: Coordinate[];
-  weather_source: 'machine' | 'api' | 'calculations';
+  weather_source: 'machine' | 'api' | 'knn' | 'calculations';
 }
 
 @Injectable({ providedIn: 'root' })

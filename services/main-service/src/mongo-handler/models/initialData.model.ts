@@ -8,7 +8,7 @@ export interface InitialData {
   lon: number;
   mass: number;
   initialSpeed: number;
-  weather_source: "machine" | "api" | "calculations";
+  weather_source: "machine" | "api" | "knn" | "calculations";
 }
 
 export const initialDataSchema = new mongoose.Schema<InitialData>(
@@ -22,7 +22,7 @@ export const initialDataSchema = new mongoose.Schema<InitialData>(
     initialSpeed: { type: Number, required: true, min: 1, max: 1200 },
     weather_source: {
       type: String,
-      enum: ["machine", "api", "calculations"],
+      enum: ["machine", "api", "knn", "calculations"],
       required: true,
       default: "machine",
     },

@@ -22,7 +22,7 @@ type CreateSimulationResponse = {
     id: string;
     createdAt: string;
     durationSeconds: number;
-    weather_source: 'machine' | 'api' | 'calculations';
+    weather_source: 'machine' | 'api' | 'knn' | 'calculations';
   };
   accessToken: string;
 };
@@ -85,7 +85,7 @@ export class FormComponent {
       Validators.min(-180),
       Validators.max(180),
     ]),
-    weather_source: new FormControl<'machine' | 'api' | 'calculations'>(
+    weather_source: new FormControl<'machine' | 'api' | 'knn' | 'calculations'>(
       'machine',
       [Validators.required],
     ),

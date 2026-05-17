@@ -30,7 +30,7 @@ class WeatherRequest(BaseModel):
         validation_alias=AliasChoices("sim_datetime", "timestamp", "datetime"),
     )
 
-    source: Literal["api", "machine"] = Field(
+    source: Literal["api", "machine", "knn"] = Field(
         ...,
         validation_alias=AliasChoices("source", "weather_source"),
     )
@@ -53,7 +53,7 @@ class WeatherResponse(BaseModel):
     pressure_Pa: float
     wind_east_mps: float
     wind_north_mps: float
-    provider_used: Literal["api", "machine"]
+    provider_used: Literal["api", "machine", "knn"]
 
 
 class HealthResponse(BaseModel):

@@ -6,5 +6,5 @@ export interface CreateSimulationBody {
   lon: number;
   mass: number;
   initialSpeed: number;
-  weather_source?: "machine" | "api" | "calculations";
+  weather_source?: "machine" | "api" | "knn" | "calculations";
 }
