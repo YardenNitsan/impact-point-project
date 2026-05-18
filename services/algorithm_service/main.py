@@ -28,9 +28,13 @@ class SimulationInput(BaseModel):
         description="Optional simulation datetime in ISO-8601 format",
     )
 
-    weather_source: Literal["api", "machine", "calculations"] = Field(
+    weather_source: Literal["api", "machine", "knn", "calculations"] = Field(
         default="machine",
-        description="Weather mode: machine/api use weather service; calculations seeds once from API then uses internal calculations",
+        description=(
+            "Weather mode: machine (MLP) / api (OpenMeteo) / knn (K-Nearest "
+            "Neighbours) hit the weather service; calculations seeds once "
+            "from API then uses internal calculations."
+        ),
     )
 
     T0_K: float | None = Field(default=None, gt=0.0, description="Manual temperature override [K]")

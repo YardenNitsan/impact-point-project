@@ -27,6 +27,18 @@ services:
       - ./services/ML_service/artifacts:/app/artifacts:ro
     command: uvicorn main:app --host 0.0.0.0 --port 8000
 
+  knn:
+    build: ./services/knn_service
+    container_name: knn-service
+    profiles: ["api"]
+    ports:
+      - "8002:8000"
+    env_file:
+      - ./services/knn_service/.env
+    volumes:
+      - ./services/knn_service/artifacts:/app/artifacts
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
   weather-service:
     build: ./services/weather_service
     container_name: weather-service
@@ -35,8 +47,12 @@ services:
       - "8080:8080"
     env_file:
       - ./services/weather_service/.env
+    environment:
+      - KNN_BASE_URL=http://knn:8000
+      - KNN_PREDICT_PATH=/predict-weather-physics
     depends_on:
       - ml-weather
+      - knn
     command: uvicorn app.main:app --host 0.0.0.0 --port 8080
 
   algorithm:

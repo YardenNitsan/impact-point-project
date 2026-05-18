@@ -5,7 +5,7 @@ export interface StoredSimulation {
   id: string;
   createdAt: string;
   durationSeconds: number;
-  weather_source: 'machine' | 'api' | 'calculations';
+  weather_source: 'machine' | 'api' | 'knn' | 'calculations';
 }
 
 @Injectable({ providedIn: 'root' })

@@ -1,0 +1,9 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+numpy==1.26.4
+python-dotenv==1.0.1
+# xarray + netcdf4 are only used at training time if ERA5 files are available.
+# The serving path needs only numpy.
+xarray==2024.6.0
+netcdf4==1.7.1.post1

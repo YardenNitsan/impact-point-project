@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from app.clients.knn_client import KnnClient
 from app.clients.machine_client import MachineClient
 from app.clients.openmeteo_client import OpenMeteoClient
+from app.providers.knn_provider import KnnProvider
 from app.providers.machine_provider import MachineProvider
 from app.providers.openmeteo_provider import OpenMeteoProvider
 from app.router import WeatherRouter
@@ -31,6 +33,15 @@ MACHINE_PREDICT_PATH = os.getenv(
     "/predict-weather-physics",
 )
 
+KNN_BASE_URL = os.getenv(
+    "KNN_BASE_URL",
+    "http://knn:8000",
+)
+KNN_PREDICT_PATH = os.getenv(
+    "KNN_PREDICT_PATH",
+    "/predict-weather-physics",
+)
+
 OPENMETEO_ARCHIVE_URL = os.getenv(
     "OPENMETEO_ARCHIVE_URL",
     "https://archive-api.open-meteo.com/v1/archive",
@@ -47,17 +58,25 @@ machine_client = MachineClient(
     timeout_seconds=REQUEST_TIMEOUT_SECONDS,
 )
 
+knn_client = KnnClient(
+    base_url=KNN_BASE_URL,
+    predict_path=KNN_PREDICT_PATH,
+    timeout_seconds=REQUEST_TIMEOUT_SECONDS,
+)
+
 openmeteo_client = OpenMeteoClient(
     archive_url=OPENMETEO_ARCHIVE_URL,
     timeout_seconds=REQUEST_TIMEOUT_SECONDS,
 )
 
 machine_provider = MachineProvider(client=machine_client)
+knn_provider = KnnProvider(client=knn_client)
 openmeteo_provider = OpenMeteoProvider(client=openmeteo_client)
 
 weather_router = WeatherRouter(
     machine_provider=machine_provider,
     openmeteo_provider=openmeteo_provider,
+    knn_provider=knn_provider,
 )
 
 

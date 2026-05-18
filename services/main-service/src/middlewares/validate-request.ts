@@ -23,7 +23,7 @@ export const createSimulationBodySchema = z
     mass: boundedNumber("mass", 1, 5000),
     initialSpeed: boundedNumber("initialSpeed", 1, 1200),
     weather_source: z
-      .enum(["machine", "api", "calculations"])
+      .enum(["machine", "api", "knn", "calculations"])
       .default("machine"),
   })
   .strict();
