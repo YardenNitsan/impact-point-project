@@ -140,7 +140,7 @@ def _residual_block(x, units: int, dropout_rate: float, regularizer, idx: int, k
 
 def build_multi_head_mlp(
     n_features: int,
-    dropout_rate: float = 0.0,
+    dropout_rate: float = 0.4,
     learning_rate: Any = 2e-3,
     l2_weight_decay: float = 0.0,
     loss_weights: Optional[Mapping[str, float]] = None,

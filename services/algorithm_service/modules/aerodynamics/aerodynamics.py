@@ -202,6 +202,10 @@ def compute_aerodynamic_loads_from_lookup_table(
         + Cm_alpha * alpha
         + pitch_damping_contribution
         + CL * lcg
+        #basic moment
+        #creating moment of angle of attack
+        #resisting of too fast circle around
+        #lift from center of position
     )
 
     My = q_bar * aero_reference.reference_area * aero_reference.reference_length * CM_eff
